@@ -15,11 +15,12 @@
 """
     luke embeddings
 """
-from mindtext.modules.encoder.bert import EmbeddingLookup, EmbeddingPostprocessor
 from mindspore.common.initializer import initializer
 import mindspore.ops as ops
 import mindspore.nn as nn
 import mindspore.common.dtype as mstype
+
+from model.bert_model import EmbeddingLookup, EmbeddingPostprocessor
 
 
 class EntityEmbeddings(nn.Cell):

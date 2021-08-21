@@ -20,7 +20,7 @@ import mindspore.ops as ops
 import mindspore.nn as nn
 import mindspore.common.dtype as mstype
 from .luke_embeddings import RobertaEmbeddings, EntityEmbeddings
-from .bert_model import BertOutput, BertEncoderCell, BertPooler
+from .bert_model import BertOutput, BertEncoderCell
 
 
 class LukeModel(nn.Cell):

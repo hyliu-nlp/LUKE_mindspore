@@ -17,11 +17,13 @@
 """
 import mindspore.nn as nn
 import mindspore.ops as ops
-from mindtext.modules.encoder.luke import LukeEntityAwareAttentionModel
+
+from model.luke import LukeEntityAwareAttentionModel
 
 
 class LukeForReadingComprehension(LukeEntityAwareAttentionModel):
     """Luke for reading comprehension task"""
+
     def __init__(self, config):
         super(LukeForReadingComprehension, self).__init__(config)
 
@@ -37,10 +39,10 @@ class LukeForReadingComprehension(LukeEntityAwareAttentionModel):
             entity_ids,
             entity_position_ids,
             entity_segment_ids,
-            entity_attention_mask,
+            entity_attention_mask
     ):
         """LukeForReadingComprehension construct"""
-        encoder_outputs = super(LukeForReadingComprehension, self).forward(
+        encoder_outputs = super(LukeForReadingComprehension, self).construct(
             word_ids,
             word_segment_ids,
             word_attention_mask,
@@ -59,10 +61,56 @@ class LukeForReadingComprehension(LukeEntityAwareAttentionModel):
         return start_logits, end_logits
 
 
+class LukeForReadingComprehensionWithLoss(nn.Cell):
+    """LukeForReadingComprehensionWithLoss"""
+
+    def __init__(self, net, loss):
+        self.lukeforrc = net
+        self.loss = loss
+        self.squeeze = ops.Squeeze(-1)
+
+    def construct(
+            self,
+            word_ids,
+            word_segment_ids,
+            word_attention_mask,
+            entity_ids,
+            entity_position_ids,
+            entity_segment_ids,
+            entity_attention_mask,
+            start_positions=None,
+            end_positions=None
+    ):
+        start_logits, end_logits = self.lukeforrc(word_ids,
+                                                  word_segment_ids,
+                                                  word_attention_mask,
+                                                  entity_ids,
+                                                  entity_position_ids,
+                                                  entity_segment_ids,
+                                                  entity_attention_mask)
+        if start_positions is not None and end_positions is not None:
+            if len(start_positions.size()) > 1:
+                start_positions = self.squeeze(start_positions)
+            if len(end_positions.size()) > 1:
+                end_positions = self.squeeze(end_positions)
+
+            ignored_index = start_logits.size(1)
+            # *.clamp_算子
+            start_positions.clamp_(0, ignored_index)
+            end_positions.clamp_(0, ignored_index)
+
+            start_loss = self.loss(start_logits, start_positions)
+            end_loss = self.loss(end_logits, end_positions)
+            total_loss = (start_loss + end_loss) / 2
+            outputs = (total_loss,)
+        else:
+            outputs = tuple()
+
+        return outputs + (start_logits, end_logits,)
+
+
 if __name__ == "__main__":
-    LukeForReadingComprehension(config='')
-    # config = LukeConfig("config.json")
-    # x = LukeForReadingComprehension(config)
-    #
-    # param_dict = load_checkpoint("luke.ckpt")
-    # load_param_into_net(x, param_dict)
+    import mindspore.nn as nn
+    model = LukeForReadingComprehension(config='')
+    loss = nn.SoftmaxCrossEntropyWithLogits
+    LukeForReadingComprehensionWithLoss(model, loss)
