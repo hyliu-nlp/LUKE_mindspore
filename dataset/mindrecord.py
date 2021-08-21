@@ -43,22 +43,26 @@ def write_to_mindrecord(data, path, shared_num=1):
 
     writer = FileWriter(path, shared_num)
     data_schema = {
-        "input_ids": {"type": "int32", "shape": [-1]},
-        "input_mask": {"type": "int32", "shape": [-1]},
-        "segment_ids": {"type": "int32", "shape": [-1]},
+        "word_ids": {"type": "int32", "shape": [-1]},
+        "word_segment_ids": {"type": "int32", "shape": [-1]},
+        "word_attention_mask": {"type": "int32", "shape": [-1]},
+        "entity_ids": {"type": "int32", "shape": [-1]},
+        "entity_position_ids": {"type": "int32", "shape": [-1]},
+        "entity_segment_ids": {"type": "int32", "shape": [-1]},
+        "entity_attention_mask": {"type": "int32", "shape": [-1]},
         "start_positions": {"type": "int32", "shape": [-1]},
-        "end_positions": {"type": "int32", "shape": [-1]},
-        "unique_ids": {"type": "int32", "shape": [-1]},
-        "is_impossible": {"type": "int32", "shape": [-1]}
+        "end_positions": {"type": "int32", "shape": [-1]}
     }
     writer.add_schema(data_schema, "bert")
     for item in data:
-        item['input_ids'] = np.array(item['src_tokens'], dtype=np.int32)
-        item['input_mask'] = np.array(item['src_tokens_length'], dtype=np.int32)
-        item['segment_ids'] = np.array(item['label_idx'], dtype=np.int32)
-        item['start_positions'] = np.array(item['src_tokens'], dtype=np.int32)
-        item['end_positions'] = np.array(item['src_tokens_length'], dtype=np.int32)
-        item['unique_ids'] = np.array(item['label_idx'], dtype=np.int32)
-        item['is_impossible'] = np.array(item['label_idx'], dtype=np.int32)
+        item['word_ids'] = np.array(item['word_ids'], dtype=np.int32)
+        item['word_segment_ids'] = np.array(item['word_segment_ids'], dtype=np.int32)
+        item['word_attention_mask'] = np.array(item['word_attention_mask'], dtype=np.int32)
+        item['entity_ids'] = np.array(item['entity_ids'], dtype=np.int32)
+        item['entity_position_ids'] = np.array(item['entity_position_ids'], dtype=np.int32)
+        item['entity_segment_ids'] = np.array(item['entity_segment_ids'], dtype=np.int32)
+        item['entity_attention_mask'] = np.array(item['entity_attention_mask'], dtype=np.int32)
+        item['start_positions'] = np.array(item['start_positions'], dtype=np.int32)
+        item['end_positions'] = np.array(item['end_positions'], dtype=np.int32)
         writer.write_raw_data([item])
     writer.commit()
