@@ -15,6 +15,7 @@
 """
 Mindrecord file
 """
+import json
 import os
 from mindspore.mindrecord import FileWriter
 import numpy as np
@@ -66,3 +67,15 @@ def write_to_mindrecord(data, path, shared_num=1):
         item['end_positions'] = np.array(item['end_positions'], dtype=np.int32)
         writer.write_raw_data([item])
     writer.commit()
+
+
+if __name__ == "__main__":
+    import numpy as np
+    features = np.load("json_features.npy")
+    list_dict = []
+    for item in features:
+        dict_temp = json.loads(item)
+        list_dict.append(dict_temp)
+        print(dict_temp["word_ids"])
+
+    write_to_mindrecord(data=list_dict, path="./luke-squad-train.mindrecord", shared_num=1)
