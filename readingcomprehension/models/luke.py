@@ -39,7 +39,7 @@ class LukeForReadingComprehension(LukeEntityAwareAttentionModel):
             entity_ids,
             entity_position_ids,
             entity_segment_ids,
-            entity_attention_mask
+            entity_attention_mask,
     ):
         """LukeForReadingComprehension construct"""
         encoder_outputs = super(LukeForReadingComprehension, self).construct(

@@ -17,10 +17,7 @@ import json
 import pandas as pd
 
 
-# from mindtext.common.data import DataSet, Instance
-
-
-class Squad():
+class Squad:
     """extract column contents from raw squad1.1"""
 
     def __init__(self, lower=False):
