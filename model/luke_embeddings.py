@@ -86,11 +86,10 @@ class RobertaEmbeddings(nn.Cell):
         self.LayerNorm = nn.LayerNorm(config.hidden_size,
                                       epsilon=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
         # position_ids (1, len position emb) is contiguous in memory and exported when serialized
         self.position_embedding_type = getattr(config, "position_embedding_type", "absolute")
         # self.register_buffer("position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)))
-        self.register_buffer("position_ids", np.arange(config.max_position_embeddings).expand((1, -1)))
+        self.register_buffer("position_ids", nn.Range(config.max_position_embeddings).expand((1, -1)))
         self.register_buffer("token_type_ids",
                              ops.Zeros(self.position_ids.size(), dtype=mstype.int64),  # dtype used to torch.long
                              persistent=False)

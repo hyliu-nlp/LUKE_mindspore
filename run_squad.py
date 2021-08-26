@@ -55,6 +55,7 @@ if __name__ == "__main__":
     input_file = "./dataset/luke-squad-train.mindrecord"
     dataset_train = build_dataset(input_file=input_file,
                                   batch_size=2)
+
     model_config = config.luke_net_cfg
     model = LukeForReadingComprehension(model_config)
     netwithloss = LukeForReadingComprehensionWithLoss(model, nn.SoftmaxCrossEntropyWithLogits)

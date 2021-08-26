@@ -124,12 +124,12 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
             end_positions=None
     ):
         start_logits, end_logits = self.net(word_ids,
-                                                  word_segment_ids,
-                                                  word_attention_mask,
-                                                  entity_ids,
-                                                  entity_position_ids,
-                                                  entity_segment_ids,
-                                                  entity_attention_mask)
+                                            word_segment_ids,
+                                            word_attention_mask,
+                                            entity_ids,
+                                            entity_position_ids,
+                                            entity_segment_ids,
+                                            entity_attention_mask)
         if start_positions is not None and end_positions is not None:
             if len(start_positions.size()) > 1:
                 start_positions = self.squeeze(start_positions)
