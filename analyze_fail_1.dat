@@ -1,0 +1,74 @@
+# [No.1] construct_wrapper.26
+# In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(130)/    def construct(self, ids):/
+funcgraph fg_26(
+        %para1 : Tensor(F32)[2, 60]    # ids
+        , %para2 : Ref[Tensor(F32)][514, 768]    # position_embeddings.embedding_table
+    ) {
+
+#------------------------> 0
+    %1 = FuncGraph::fg_27(%para1)    #(Tensor(F32)[2, 60])    # fg_27=construct.27 #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(135)/        if self.use_one_hot:/#[CNode]29
+    Primitive::Return{prim_type=1}(%1)    #(Undefined) #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(135)/        if self.use_one_hot:/#[CNode]30
+}
+# order:
+#   1: construct_wrapper.26:[CNode]29{[0]: ValueNode<FuncGraph> construct.27, [1]: ids}
+#   2: construct_wrapper.26:[CNode]30{[0]: ValueNode<Primitive> Return, [1]: [CNode]29}
+
+
+# [No.2] construct.27
+# In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(130)/    def construct(self, ids):/
+funcgraph fg_27[fg_26](
+        %para3 : Tensor(F32)[2, 60]    # ids
+    ) {
+    %1 : Bool = FuncGraph::fg_31(Bool(0))    #(Bool)    # fg_31=bool_.31 #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(135)/        if self.use_one_hot:/#32
+    %2 : Func = Primitive::Switch{prim_type=1}(%1, FuncGraph::fg_33, FuncGraph::fg_28)    #(Bool, Func, Func)    # fg_33=✓construct.33, fg_28=✗construct.28 #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(135)/        if self.use_one_hot:/#[CNode]34
+
+#------------------------> 1
+    %3 = %2() #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(135)/        if self.use_one_hot:/#[CNode]35
+    Primitive::Return{prim_type=1}(%3)    #(Undefined) #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(135)/        if self.use_one_hot:/#[CNode]36
+}
+# order:
+#   1: construct.27:[CNode]37{[0]: ValueNode<DoSignaturePrimitive> S-Prim-negative, [1]: ValueNode<Int64Imm> 1}
+#   2: construct.27:extended_ids{[0]: ValueNode<DoSignaturePrimitive> S-Prim-ExpandDims, [1]: ids, [2]: [CNode]37}
+#   3: construct.27:[CNode]38{[0]: ValueNode<DoSignaturePrimitive> S-Prim-Shape, [1]: ids}
+#   4: construct.27:[CNode]39{[0]: ValueNode<DoSignaturePrimitive> S-Prim-MakeTuple, [1]: ValueNode<Int64Imm> 768}
+#   5: construct.27:Φout_shape{[0]: ValueNode<DoSignaturePrimitive> S-Prim-add, [1]: [CNode]38, [2]: [CNode]39}
+#   6: construct.27:flat_ids{[0]: ValueNode<DoSignaturePrimitive> S-Prim-Reshape, [1]: extended_ids, [2]: ValueNode<ValueTuple> (-1)}
+#   7: construct.27:32{[0]: ValueNode<FuncGraph> bool_.31, [1]: ValueNode<BoolImm> false}
+#   8: construct.27:[CNode]34{[0]: ValueNode<Primitive> Switch, [1]: 32, [2]: ValueNode<FuncGraph> ✓construct.33, [3]: ValueNode<FuncGraph> ✗construct.28}
+#   9: construct.27:[CNode]35{[0]: [CNode]34}
+#  10: construct.27:[CNode]36{[0]: ValueNode<Primitive> Return, [1]: [CNode]35}
+
+
+# [No.3] ✗construct.28
+# In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(135)/        if self.use_one_hot:/
+funcgraph fg_28[fg_27](
+) {
+    %1 : $(✗construct.28):I64 = DoSignaturePrimitive::S-Prim-negative{prim_type=1}(I64(1))    #(I64) #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(131)/        extended_ids = self.expand(ids, -1)/#[CNode]37
+    %2 : $(✗construct.28):Tensor(F32)[2, 60, 1] = DoSignaturePrimitive::S-Prim-ExpandDims{prim_type=1}[input_names=["x", "axis"], output_names=["output"]](%para3, %1)    #(Tensor(F32)[2, 60], I64) #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(131)/        extended_ids = self.expand(ids, -1)/#extended_ids
+    %3 : $(✗construct.28):Tensor(F32)[120] = DoSignaturePrimitive::S-Prim-Reshape{prim_type=1}[input_names=["tensor", "shape"], output_names=["output"]](%2, (I64(-1)))    #(Tensor(F32)[2, 60, 1], Tuple[I64]) #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(133)/        flat_ids = self.reshape_flat(extended_ids, self.shp_flat)/#flat_ids
+
+#------------------------> 2
+    %4 = DoSignaturePrimitive::S-Prim-Gather{prim_type=1}[input_names=["params", "indices", "axis"], output_names=["output"]](%para2, %3, I64(0))    #(Ref[Tensor(F32)][514, 768], Tensor(F32)[120], I64) #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(139)/            output_for_reshape = self.gather(self.embedding_table, flat_ids, 0)/#output_for_reshape
+    %5 = FuncGraph::fg_40(%4)    #(Undefined)    # fg_40=↓construct.40 #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(135)/        if self.use_one_hot:/#[CNode]41
+    Primitive::Return{prim_type=1}(%5)    #(Undefined) #scope: Default
+      # In file C:\Users\DM\anaconda3\envs\MindSpore\lib\site-packages\mindspore\nn\layer\embedding.py(135)/        if self.use_one_hot:/#[CNode]42
+}
+# order:
+#   1: ✗construct.28:output_for_reshape{[0]: ValueNode<DoSignaturePrimitive> S-Prim-Gather, [1]: position_embeddings.embedding_table, [2]: flat_ids, [3]: ValueNode<Int64Imm> 0}
+#   2: ✗construct.28:[CNode]41{[0]: ValueNode<FuncGraph> ↓construct.40, [1]: output_for_reshape}
+#   3: ✗construct.28:[CNode]42{[0]: ValueNode<Primitive> Return, [1]: [CNode]41}
+
+
+#===============================================================================
+# num of function graphs in stack: 4

@@ -36,11 +36,11 @@ class LukeModel(nn.Cell):
         self.pooler = nn.Dense(config.hidden_size, config.hidden_size,
                                activation="tanh",
                                weight_init=TruncatedNormal(config.initializer_range)).to_float(config.compute_type)
-        # if self.config.bert_model_name and "roberta" in self.config.bert_model_name:
+        #if self.config.bert_model_name and "roberta" in self.config.bert_model_name:
         self.embeddings = RobertaEmbeddings(config)
-        # self.embeddings.token_type_embeddings.requires_grad = False
-        # else:
-        # self.embeddings = BertEmbeddings(config)
+        self.embeddings.token_type_embeddings.requires_grad = False
+        #else:
+            #self.embeddings = BertEmbeddings(config)
         self.entity_embeddings = EntityEmbeddings(config)
 
     def construct(self, word_ids, word_segment_ids, word_attention_mask,
@@ -70,8 +70,10 @@ class LukeModel(nn.Cell):
     def _compute_extended_attention_mask(self, word_attention_mask, entity_attention_mask):
         attention_mask = word_attention_mask
         if entity_attention_mask is not None:
-            attention_mask = self.concat([attention_mask, entity_attention_mask])
-        extended_attention_mask = self.unsqueezee(self.unsqueezee(attention_mask, 1), 2)
+            op_Concat = ops.Concat(axis = 1)
+            attention_mask = op_Concat((attention_mask, entity_attention_mask))
+        unsqueezee = ops.ExpandDims()
+        extended_attention_mask = unsqueezee(unsqueezee(attention_mask, 1), 2)
         extended_attention_mask = extended_attention_mask.astype(mstype.float32)
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
         return extended_attention_mask
@@ -87,8 +89,8 @@ class LukeEntityAwareAttentionModel(LukeModel):
 
     def construct(self, word_ids, word_segment_ids, word_attention_mask, entity_ids,
                   entity_position_ids, entity_segment_ids, entity_attention_mask):
-        word_embeddings = self.embeddings(word_ids, word_segment_ids)
-        entity_embeddings = self.entity_embeddings(entity_ids, entity_position_ids, entity_segment_ids)
+        word_embeddings = self.embeddings.construct(word_ids, word_segment_ids)
+        entity_embeddings = self.entity_embeddings.construct(entity_ids, entity_position_ids, entity_segment_ids)
         attention_mask = self._compute_extended_attention_mask(word_attention_mask, entity_attention_mask)
 
         return self.encoder(word_embeddings, entity_embeddings, attention_mask)

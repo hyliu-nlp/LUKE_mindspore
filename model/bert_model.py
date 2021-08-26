@@ -56,7 +56,7 @@ class BertConfig:
     """
     def __init__(self,
                  seq_length=256,
-                 vocab_size=32000,
+                 vocab_size=50267,
                  hidden_size=768,
                  num_hidden_layers=12,
                  num_attention_heads=12,
@@ -98,7 +98,7 @@ class BertConfig:
         self.use_relative_positions = use_relative_positions
         self.dtype = dtype
         self.compute_type = compute_type
-        self.bert_model_name= bert_model_name,
+        self.bert_model_name= bert_model_name
         self.entity_emb_size=  entity_emb_size
         self.entity_vocab_size=  entity_vocab_size
         self.eos_token_id=  eos_token_id
