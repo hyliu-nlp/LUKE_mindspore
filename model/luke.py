@@ -24,8 +24,6 @@ from .bert_model import BertOutput, BertEncoderCell
 from mindspore.common.initializer import initializer, TruncatedNormal
 
 
-
-
 class LukeModel(nn.Cell):
     """LukeModel"""
 
@@ -34,15 +32,15 @@ class LukeModel(nn.Cell):
 
         self.config = config
         self.encoder = BertEncoderCell(config.batch_size)
-        #self.pooler = BertPooler(config)
+        # self.pooler = BertPooler(config)
         self.pooler = nn.Dense(config.hidden_size, config.hidden_size,
-                        activation="tanh",
-        weight_init=TruncatedNormal(config.initializer_range)).to_float(config.compute_type)
-        #if self.config.bert_model_name and "roberta" in self.config.bert_model_name:
+                               activation="tanh",
+                               weight_init=TruncatedNormal(config.initializer_range)).to_float(config.compute_type)
+        # if self.config.bert_model_name and "roberta" in self.config.bert_model_name:
         self.embeddings = RobertaEmbeddings(config)
-        #self.embeddings.token_type_embeddings.requires_grad = False
-        #else:
-            #self.embeddings = BertEmbeddings(config)
+        # self.embeddings.token_type_embeddings.requires_grad = False
+        # else:
+        # self.embeddings = BertEmbeddings(config)
         self.entity_embeddings = EntityEmbeddings(config)
 
     def construct(self, word_ids, word_segment_ids, word_attention_mask,
