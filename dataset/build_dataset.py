@@ -15,7 +15,7 @@ def build_dataset(input_file,
                               shuffle=shuffle,
                               num_shards=rank_size,
                               shard_id=rank_id,
-                              num_parallel_workers=0)
-    print(data_set.get_dataset_size())
-    data_set = data_set.batch(batch_size, drop_remainder=False)
+                              num_parallel_workers=1)
+    #print(data_set.get_dataset_size())
+    #data_set = data_set.batch(batch_size, drop_remainder=False)
     return data_set

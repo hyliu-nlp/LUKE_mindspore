@@ -55,7 +55,7 @@ class BertConfig:
         compute_type (:class:`mindspore.dtype`): Compute type in BertTransformer. Default: mstype.float32.
     """
     def __init__(self,
-                 seq_length=128,
+                 seq_length=256,
                  vocab_size=32000,
                  hidden_size=768,
                  num_hidden_layers=12,
@@ -64,13 +64,26 @@ class BertConfig:
                  hidden_act="gelu",
                  hidden_dropout_prob=0.1,
                  attention_probs_dropout_prob=0.1,
-                 max_position_embeddings=512,
+                 max_position_embeddings=514,
                  type_vocab_size=16,
                  initializer_range=0.02,
+                 batch_size=2,
                  use_relative_positions=False,
                  dtype=mstype.float32,
-                 compute_type=mstype.float32):
+                 compute_type=mstype.float32,
+                 bert_model_name= "roberta-base",
+                 entity_emb_size=  256,
+                 entity_vocab_size=  500000,
+                 eos_token_id=  2,
+                 gradient_checkpointing= True,
+                 layer_norm_eps=  1e-05,
+                 model_type= "luke",
+                 output_past= True,
+                 pad_token_id= 1,
+                 position_embedding_type=  "absolute",
+                 ):
         self.seq_length = seq_length
+        self.batch_size = batch_size
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
@@ -85,6 +98,17 @@ class BertConfig:
         self.use_relative_positions = use_relative_positions
         self.dtype = dtype
         self.compute_type = compute_type
+        self.bert_model_name= bert_model_name,
+        self.entity_emb_size=  entity_emb_size
+        self.entity_vocab_size=  entity_vocab_size
+        self.eos_token_id=  eos_token_id
+        self.gradient_checkpointing= gradient_checkpointing
+        self.layer_norm_eps=  layer_norm_eps
+        self.model_type= model_type
+        self.output_past= output_past
+        self.pad_token_id= pad_token_id
+        self.position_embedding_type=  position_embedding_type
+        self.embedding_size = self.hidden_size
 
 
 class EmbeddingLookup(nn.Cell):
@@ -570,7 +594,7 @@ class BertSelfAttention(nn.Cell):
     """
     def __init__(self,
                  seq_length,
-                 hidden_size,
+                 hidden_size = 768,
                  num_attention_heads=12,
                  attention_probs_dropout_prob=0.1,
                  use_one_hot_embeddings=False,
@@ -579,6 +603,7 @@ class BertSelfAttention(nn.Cell):
                  use_relative_positions=False,
                  compute_type=mstype.float32):
         super(BertSelfAttention, self).__init__()
+        hidden_size = 768
         if hidden_size % num_attention_heads != 0:
             raise ValueError("The hidden size (%d) is not a multiple of the number "
                              "of attention heads (%d)" % (hidden_size, num_attention_heads))

@@ -47,8 +47,8 @@ class EntityEmbeddings(nn.Cell):
             token_type_ids = ops.zeros_like(entity_ids)
 
         entity_embeddings = self.entity_embeddings(entity_ids)
-
-        position_embeddings = self.position_embeddings(clamp(position_ids))
+        #position_embeddings = self.position_embeddings(clamp(position_ids))
+        position_embeddings = self.position_embeddings(position_ids)
         position_embedding_mask = self.unsqueezee((position_ids != -1), -1)
         position_embeddings = position_embeddings * position_embedding_mask
         position_embeddings = ops.reduce_sum(position_embeddings, -2)
@@ -59,7 +59,6 @@ class EntityEmbeddings(nn.Cell):
         embeddings = entity_embeddings + position_embeddings + token_type_embeddings
         embeddings = self.layer_norm(embeddings)
         embeddings = self.dropout(embeddings)
-
         return embeddings
 
 
@@ -70,20 +69,19 @@ def clamp(x, minimum=0.0):
 
 
 class RobertaEmbeddings(nn.Cell):
-    """RoBERTa Embedding for luke """
     def __init__(self, config):
         output_embedding_shape = [config.batch_size, config.seq_length,
-                                  config.embedding_size]
+                                  config.hidden_size]
         super(RobertaEmbeddings, self).__init__()
         self.bert_embedding_lookup = EmbeddingLookup(
             vocab_size=config.vocab_size,
-            embedding_size=self.embedding_size,
+            embedding_size=config.hidden_size,
             embedding_shape=output_embedding_shape,
             use_one_hot_embeddings=False,
             initializer_range=config.initializer_range)
 
         self.bert_embedding_postprocessor = EmbeddingPostprocessor(
-            embedding_size=self.embedding_size,
+            embedding_size=config.hidden_size,
             embedding_shape=output_embedding_shape,
             use_relative_positions=config.use_relative_positions,
             use_token_type=True,
@@ -93,10 +91,11 @@ class RobertaEmbeddings(nn.Cell):
             max_position_embeddings=config.max_position_embeddings,
             dropout_prob=config.hidden_dropout_prob)
         self.token_type_ids = initializer(
-            "zeros", [self.batch_size, self.seq_length], mstype.int32).to_tensor()
+            "zeros", [config.batch_size, config.seq_length], mstype.int32).to_tensor()
 
-    def construct(self, input_ids):
-        word_embeddings, _ = self.bert_embedding_lookup(input_ids)
+    def construct(self, input_ids, segment_ids):
+        word_embeddings, embedding_tables = self.bert_embedding_lookup(input_ids)
         embedding_output = self.bert_embedding_postprocessor(self.token_type_ids,
                                                              word_embeddings)
         return embedding_output
+
