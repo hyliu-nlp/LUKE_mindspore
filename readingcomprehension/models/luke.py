@@ -107,7 +107,7 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
     """LukeForReadingComprehensionWithLoss"""
 
     def __init__(self, net, loss):
-        self.lukeforrc = net
+        self.net = net
         self.loss = loss
         self.squeeze = ops.Squeeze(-1)
 
@@ -123,7 +123,7 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
             start_positions=None,
             end_positions=None
     ):
-        start_logits, end_logits = self.lukeforrc(word_ids,
+        start_logits, end_logits = self.net(word_ids,
                                                   word_segment_ids,
                                                   word_attention_mask,
                                                   entity_ids,
