@@ -261,6 +261,22 @@ class BertOutput(nn.Cell):
         output = self.layernorm(output)
         return output
 
+class BertSelfOutput(nn.Cell):
+    def __init__(self, config, compute_type=mstype.float32):
+        super().__init__()
+        self.dense = nn.Dense(config.hidden_size, config.hidden_size,
+                             weight_init=TruncatedNormal(config.initializer_range)).to_float(compute_type)
+        self.LayerNorm = nn.LayerNorm((config.hidden_size,), epsilon=config.layer_norm_eps).to_float(compute_type)
+        self.dropout = nn.Dropout(1 - config.hidden_dropout_prob)
+        self.add = P.Add()
+
+    def forward(self, hidden_states, input_tensor):
+        hidden_states = self.dense(hidden_states)
+        hidden_states = self.dropout(hidden_states)
+        hidden_states = self.add(input_tensor, hidden_states)
+        hidden_states = self.LayerNorm(hidden_states)
+        return hidden_states
+
 
 class RelaPosMatrixGenerator(nn.Cell):
     """

@@ -191,7 +191,10 @@ class EntityAwareLayer(nn.Cell):
         super(EntityAwareLayer, self).__init__()
 
         self.attention = EntityAwareAttention(config)
-        self.intermediate = nn.Dense(config.hidden_size, config.hidden_size)
+        self.intermediate = nn.Dense(config.hidden_size, 
+                                     config.intermediate_size,
+                                     activation=config.hidden_act,
+                                     weight_init=TruncatedNormal(config.initializer_range)).to_float(mstype.float32)
         self.output = BertOutput(config.hidden_size, config.hidden_size)
         self.concat = ops.Concat(1)
 
@@ -212,7 +215,8 @@ class EntityAwareEncoder(nn.Cell):
 
     def __init__(self, config):
         super(EntityAwareEncoder, self).__init__()
-        self.layer = EntityAwareLayer(config)
+        #self.layer = EntityAwareLayer(config)
+        self.layer = nn.CellList([EntityAwareLayer(config) for _ in range(config.num_hidden_layers)])
 
     def construct(self, word_hidden_states, entity_hidden_states, attention_mask):
         word_hidden_states, entity_hidden_states = self.layer(word_hidden_states,

@@ -42,7 +42,7 @@ class EntityEmbeddings(nn.Cell):
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
         
         # TODO：[config.hidden_size] 和 torch有区别
-        self.layer_norm = nn.LayerNorm([config.hidden_size], epsilon=config.layer_norm_eps)
+        self.layer_norm = nn.LayerNorm((config.hidden_size,), epsilon=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.unsqueezee = ops.ExpandDims()
 
@@ -89,7 +89,7 @@ class RobertaEmbeddings(nn.Cell):
 
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
         # any TensorFlow checkpoint file
-        self.LayerNorm = nn.LayerNorm([config.hidden_size],
+        self.LayerNorm = nn.LayerNorm((config.hidden_size,),
                                       epsilon=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         # position_ids (1, len position emb) is contiguous in memory and exported when serialized
