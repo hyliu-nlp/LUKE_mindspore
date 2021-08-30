@@ -30,6 +30,7 @@ from mindspore.nn.wrap.grad_reducer import DistributedGradReducer
 from mindspore.context import ParallelMode
 from mindspore.communication.management import get_group_size
 from mindspore import context
+import math
 
 _grad_overflow = C.MultitypeFuncGraph("_grad_overflow")
 GRADIENT_CLIP_TYPE = 1
@@ -68,10 +69,11 @@ class LukeForReadingComprehension(LukeEntityAwareAttentionModel):
 
     def __init__(self, config):
         super(LukeForReadingComprehension, self).__init__(config)
-
+        self.LukeEntityAwareAttentionModel = super(LukeForReadingComprehension, self)
         self.qa_outputs = nn.Dense(self.config.hidden_size, 2)
         self.split = ops.Split(-1, 2)
         self.squeeze = ops.Squeeze(-1)
+        self.shape = ops.Shape()
 
     def construct(
             self,
@@ -82,9 +84,11 @@ class LukeForReadingComprehension(LukeEntityAwareAttentionModel):
             entity_position_ids,
             entity_segment_ids,
             entity_attention_mask,
+            start_positions=None,
+            end_positions=None,
     ):
         """LukeForReadingComprehension construct"""
-        encoder_outputs = super(LukeForReadingComprehension, self).construct(
+        encoder_outputs = self.LukeEntityAwareAttentionModel.construct(
             word_ids,
             word_segment_ids,
             word_attention_mask,
@@ -94,13 +98,31 @@ class LukeForReadingComprehension(LukeEntityAwareAttentionModel):
             entity_attention_mask,
         )
 
-        word_hidden_states = encoder_outputs[0][:, : ops.shape(word_ids), :]
+        word_hidden_states = encoder_outputs[0][:, : ops.shape(word_ids)[1], :]
         logits = self.qa_outputs(word_hidden_states)
         start_logits, end_logits = self.split(logits)
         start_logits = self.squeeze(start_logits)
         end_logits = self.squeeze(end_logits)
+        
+        if start_positions is not None and end_positions is not None:
+            if len(self.shape(start_positions)) > 1:
+                start_positions = self.squeeze(start_positions)
+            if len(self.shape(end_positions)) > 1:
+                end_positions = self.squeeze(end_positions)
 
-        return start_logits, end_logits
+            ignored_index = ops.shape(start_logits)[1]
+            start_positions = C.clip_by_value(start_positions, 0, ignored_index)
+            end_positions = C.clip_by_value(end_positions, 0, ignored_index)
+
+            loss_fct = nn.SoftmaxCrossEntropyWithLogits(sparse = True)
+            #loss_fct = CrossEntropyLoss(ignore_index=ignored_index)
+            start_loss = loss_fct(start_logits, start_positions)
+            end_loss = loss_fct(end_logits, end_positions)
+            total_loss = (start_loss + end_loss) / 2
+            outputs = (total_loss,)
+        else:
+            outputs = tuple()
+        return outputs + (start_logits, end_logits,)
 
 
 class LukeForReadingComprehensionWithLoss(nn.Cell):
