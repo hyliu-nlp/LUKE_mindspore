@@ -23,24 +23,25 @@ import numpy as np
 from model.bert_model import EmbeddingLookup, EmbeddingPostprocessor
 from mindspore import Tensor, context
 
+
 class EntityEmbeddings(nn.Cell):
     """entity embeddings for luke model"""
 
     def __init__(self, config):
         super(EntityEmbeddings, self).__init__()
         self.config = config
-        #config.entity_vocab_size = 20
-        #config.entity_emb_size = config.hidden_size
-        #config.layer_norm_eps = 1e-6
+        # config.entity_vocab_size = 20
+        # config.entity_emb_size = config.hidden_size
+        # config.layer_norm_eps = 1e-6
 
         self.entity_embeddings = nn.Embedding(config.entity_vocab_size, config.entity_emb_size, padding_idx=0)
-        
+
         if config.entity_emb_size != config.hidden_size:
             self.entity_embedding_dense = nn.Dense(config.entity_emb_size, config.hidden_size, has_bias=False)
-            
+
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
-        
+
         # TODO：[config.hidden_size] 和 torch有区别
         self.layer_norm = nn.LayerNorm([config.hidden_size], epsilon=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -57,16 +58,16 @@ class EntityEmbeddings(nn.Cell):
         entity_position_ids_int = clamp(position_ids)
         entity_position_ids_int = Tensor(entity_position_ids_int.asnumpy().astype(np.int32))
         position_embeddings = self.position_embeddings(entity_position_ids_int)
-        #position_embeddings = self.position_embeddings(position_ids)
-        position_embedding_mask = 1*self.unsqueezee((position_ids != -1), -1)
+        # position_embeddings = self.position_embeddings(position_ids)
+        position_embedding_mask = 1 * self.unsqueezee((position_ids != -1), -1)
         position_embeddings = position_embeddings * position_embedding_mask
         position_embeddings = ops.reduce_sum(position_embeddings, -2)
         position_embeddings = position_embeddings / clamp(ops.reduce_sum(position_embedding_mask, -2), minimum=1e-7)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
 
         embeddings = entity_embeddings + position_embeddings + token_type_embeddings
-        #embeddings = self.layer_norm(embeddings)
-        #embeddings = self.dropout(embeddings)
+        # embeddings = self.layer_norm(embeddings)
+        # embeddings = self.dropout(embeddings)
         return embeddings
 
 
@@ -74,6 +75,7 @@ def clamp(x, minimum=0.0):
     mask = x > minimum
     x = x * mask + minimum
     return x
+
 
 class RobertaEmbeddings(nn.Cell):
     def __init__(self, config):
@@ -116,7 +118,7 @@ class RobertaEmbeddings(nn.Cell):
                 position_ids = create_position_ids_from_input_ids(input_ids, self.padding_idx, past_key_values_length)
             else:
                 position_ids = create_position_ids_from_input_ids(inputs_embeds)
-        #if input_ids is not None:
+        # if input_ids is not None:
         input_shape = input_ids.shape
         seq_length = input_shape[1]
         if token_type_ids is None:
@@ -143,8 +145,7 @@ def create_position_ids_from_input_ids(input_ids, padding_idx, past_key_values_l
     # The series of casts and type-conversions here are carefully balanced to both work with ONNX export and XLA.
     pad_id = np.array(padding_idx)
     mask = Tensor(1 * np.array(input_ids.asnumpy() != pad_id))
-    #mask = input_ids.ne(padding_idx).int()  # 可能有问题
+    # mask = input_ids.ne(padding_idx).int()  # 可能有问题
     cumsum = ops.CumSum()
     incremental_indices = (cumsum(mask, 1) + past_key_values_length) * mask
     return incremental_indices + padding_idx
-

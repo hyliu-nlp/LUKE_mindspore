@@ -42,4 +42,4 @@ luke_net_cfg:
   use_cache: True
   use_entity_aware_attention: True
   dtype: mstype.float32
-  compute_type: mstype.float16
+  compute_type: mstype.float32

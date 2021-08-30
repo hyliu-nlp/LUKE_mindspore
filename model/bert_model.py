@@ -54,13 +54,14 @@ class BertConfig:
         dtype (:class:`mindspore.dtype`): Data type of the input. Default: mstype.float32.
         compute_type (:class:`mindspore.dtype`): Compute type in BertTransformer. Default: mstype.float32.
     """
+
     def __init__(self,
                  seq_length=256,
                  vocab_size=50267,
-                 hidden_size=768,
-                 num_hidden_layers=12,
-                 num_attention_heads=12,
-                 intermediate_size=3072,
+                 hidden_size=1024,
+                 num_hidden_layers=24,
+                 num_attention_heads=16,
+                 intermediate_size=4096,
                  hidden_act="gelu",
                  hidden_dropout_prob=0.1,
                  attention_probs_dropout_prob=0.1,
@@ -71,17 +72,19 @@ class BertConfig:
                  use_relative_positions=False,
                  dtype=mstype.float32,
                  compute_type=mstype.float32,
-                 bert_model_name= "roberta-base",
-                 entity_emb_size=  256,
-                 entity_vocab_size=  500000,
-                 eos_token_id=  2,
-                 gradient_checkpointing= True,
-                 layer_norm_eps=  1e-05,
-                 model_type= "luke",
-                 output_past= True,
-                 pad_token_id= 1,
-                 position_embedding_type=  "absolute",
+                 bert_model_name="roberta-large",
+                 bos_token_id=0,
+                 entity_emb_size=256,
+                 entity_vocab_size=500000,
+                 eos_token_id=2,
+                 gradient_checkpointing=False,
+                 layer_norm_eps=1e-05,
+                 model_type="luke",
+                 output_past=True,
+                 pad_token_id=1,
+                 position_embedding_type="absolute",
                  ):
+        self.bos_token_id = bos_token_id
         self.seq_length = seq_length
         self.batch_size = batch_size
         self.vocab_size = vocab_size
@@ -98,16 +101,16 @@ class BertConfig:
         self.use_relative_positions = use_relative_positions
         self.dtype = dtype
         self.compute_type = compute_type
-        self.bert_model_name= bert_model_name
-        self.entity_emb_size=  entity_emb_size
-        self.entity_vocab_size=  entity_vocab_size
-        self.eos_token_id=  eos_token_id
-        self.gradient_checkpointing= gradient_checkpointing
-        self.layer_norm_eps=  layer_norm_eps
-        self.model_type= model_type
-        self.output_past= output_past
-        self.pad_token_id= pad_token_id
-        self.position_embedding_type=  position_embedding_type
+        self.bert_model_name = bert_model_name
+        self.entity_emb_size = entity_emb_size
+        self.entity_vocab_size = entity_vocab_size
+        self.eos_token_id = eos_token_id
+        self.gradient_checkpointing = gradient_checkpointing
+        self.layer_norm_eps = layer_norm_eps
+        self.model_type = model_type
+        self.output_past = output_past
+        self.pad_token_id = pad_token_id
+        self.position_embedding_type = position_embedding_type
         self.embedding_size = self.hidden_size
 
 
@@ -123,6 +126,7 @@ class EmbeddingLookup(nn.Cell):
         use_one_hot_embeddings (bool): Specifies whether to use one hot encoding form. Default: False.
         initializer_range (float): Initialization value of TruncatedNormal. Default: 0.02.
     """
+
     def __init__(self,
                  vocab_size,
                  embedding_size,
@@ -175,6 +179,7 @@ class EmbeddingPostprocessor(nn.Cell):
                                  model. Default: 512.
         dropout_prob (float): The dropout probability. Default: 0.1.
     """
+
     def __init__(self,
                  embedding_size,
                  embedding_shape,
@@ -239,6 +244,7 @@ class BertOutput(nn.Cell):
         dropout_prob (float): The dropout probability. Default: 0.1.
         compute_type (:class:`mindspore.dtype`): Compute type in BertTransformer. Default: mstype.float32.
     """
+
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -261,11 +267,12 @@ class BertOutput(nn.Cell):
         output = self.layernorm(output)
         return output
 
+
 class BertSelfOutput(nn.Cell):
     def __init__(self, config, compute_type=mstype.float32):
         super().__init__()
         self.dense = nn.Dense(config.hidden_size, config.hidden_size,
-                             weight_init=TruncatedNormal(config.initializer_range)).to_float(compute_type)
+                              weight_init=TruncatedNormal(config.initializer_range)).to_float(compute_type)
         self.LayerNorm = nn.LayerNorm((config.hidden_size,), epsilon=config.layer_norm_eps).to_float(compute_type)
         self.dropout = nn.Dropout(1 - config.hidden_dropout_prob)
         self.add = P.Add()
@@ -286,6 +293,7 @@ class RelaPosMatrixGenerator(nn.Cell):
         length (int): Length of one dim for the matrix to be generated.
         max_relative_position (int): Max value of relative position.
     """
+
     def __init__(self, length, max_relative_position):
         super(RelaPosMatrixGenerator, self).__init__()
         self._length = length
@@ -330,6 +338,7 @@ class RelaPosEmbeddingsGenerator(nn.Cell):
         initializer_range (float): Initialization value of TruncatedNormal.
         use_one_hot_embeddings (bool): Specifies whether to use one hot encoding form. Default: False.
     """
+
     def __init__(self,
                  length,
                  depth,
@@ -379,6 +388,7 @@ class SaturateCast(nn.Cell):
         src_type (:class:`mindspore.dtype`): The type of the elements of the input tensor. Default: mstype.float32.
         dst_type (:class:`mindspore.dtype`): The type of the elements of the output tensor. Default: mstype.float32.
     """
+
     def __init__(self, src_type=mstype.float32, dst_type=mstype.float32):
         super(SaturateCast, self).__init__()
         np_type = mstype.dtype_to_nptype(dst_type)
@@ -421,6 +431,7 @@ class BertAttention(nn.Cell):
         use_relative_positions (bool): Specifies whether to use relative positions. Default: False.
         compute_type (:class:`mindspore.dtype`): Compute type in BertAttention. Default: mstype.float32.
     """
+
     def __init__(self,
                  from_tensor_width,
                  to_tensor_width,
@@ -608,9 +619,10 @@ class BertSelfAttention(nn.Cell):
         use_relative_positions (bool): Specifies whether to use relative positions. Default: False.
         compute_type (:class:`mindspore.dtype`): Compute type in BertSelfAttention. Default: mstype.float32.
     """
+
     def __init__(self,
                  seq_length,
-                 hidden_size = 768,
+                 hidden_size=768,
                  num_attention_heads=12,
                  attention_probs_dropout_prob=0.1,
                  use_one_hot_embeddings=False,
@@ -674,6 +686,7 @@ class BertEncoderCell(nn.Cell):
         hidden_act (str): Activation function. Default: "gelu".
         compute_type (:class:`mindspore.dtype`): Compute type in attention. Default: mstype.float32.
     """
+
     def __init__(self,
                  hidden_size=768,
                  seq_length=512,
@@ -737,6 +750,7 @@ class BertTransformer(nn.Cell):
         compute_type (:class:`mindspore.dtype`): Compute type in BertTransformer. Default: mstype.float32.
         return_all_encoders (bool): Specifies whether to return all encoders. Default: False.
     """
+
     def __init__(self,
                  hidden_size,
                  seq_length,
@@ -801,6 +815,7 @@ class CreateAttentionMaskFromInputMask(nn.Cell):
     Args:
         config (Class): Configuration for BertModel.
     """
+
     def __init__(self, config):
         super(CreateAttentionMaskFromInputMask, self).__init__()
         self.input_mask = None
@@ -823,6 +838,7 @@ class BertModel(nn.Cell):
         is_training (bool): True for training mode. False for eval mode.
         use_one_hot_embeddings (bool): Specifies whether to use one hot encoding form. Default: False.
     """
+
     def __init__(self,
                  config,
                  is_training,
