@@ -10,3 +10,8 @@
 pytorch_model.bin
 luke-large-qa(fail).ckpt
 *.ckpt
+.ipynb_checkpoints/
+__pycache__/
+model/__pycache__/
+readingcomprehension/__pycache__/
+readingcomprehension/models/__pycache__/
