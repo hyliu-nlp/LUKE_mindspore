@@ -57,7 +57,7 @@ class BertConfig:
 
     def __init__(self,
                  seq_length=256,
-                 vocab_size=50267,
+                 vocab_size=50265,
                  hidden_size=1024,
                  num_hidden_layers=24,
                  num_attention_heads=16,
@@ -66,7 +66,7 @@ class BertConfig:
                  hidden_dropout_prob=0.1,
                  attention_probs_dropout_prob=0.1,
                  max_position_embeddings=514,
-                 type_vocab_size=16,
+                 type_vocab_size=1,
                  initializer_range=0.02,
                  batch_size=2,
                  use_relative_positions=False,
@@ -631,6 +631,7 @@ class BertSelfAttention(nn.Cell):
                  use_relative_positions=False,
                  compute_type=mstype.float32):
         super(BertSelfAttention, self).__init__()
+        hidden_size = 1024
         if hidden_size % num_attention_heads != 0:
             raise ValueError("The hidden size (%d) is not a multiple of the number "
                              "of attention heads (%d)" % (hidden_size, num_attention_heads))
@@ -687,9 +688,9 @@ class BertEncoderCell(nn.Cell):
     """
 
     def __init__(self,
-                 hidden_size=768,
+                 hidden_size=1024,
                  seq_length=512,
-                 num_attention_heads=12,
+                 num_attention_heads=16,
                  intermediate_size=3072,
                  attention_probs_dropout_prob=0.02,
                  use_one_hot_embeddings=False,

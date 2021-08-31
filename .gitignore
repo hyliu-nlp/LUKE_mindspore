@@ -9,3 +9,4 @@
 *.ipynb_checkpoints
 pytorch_model.bin
 luke-large-qa(fail).ckpt
+*.ckpt
