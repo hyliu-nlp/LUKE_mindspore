@@ -277,7 +277,7 @@ class BertSelfOutput(nn.Cell):
         self.dropout = nn.Dropout(1 - config.hidden_dropout_prob)
         self.add = P.Add()
 
-    def forward(self, hidden_states, input_tensor):
+    def construct(self, hidden_states, input_tensor):
         hidden_states = self.dense(hidden_states)
         hidden_states = self.dropout(hidden_states)
         hidden_states = self.add(input_tensor, hidden_states)

@@ -20,7 +20,7 @@ import mindspore.ops as ops
 import mindspore.nn as nn
 import mindspore.common.dtype as mstype
 from .luke_embeddings import RobertaEmbeddings, EntityEmbeddings
-from .bert_model import BertOutput, BertEncoderCell
+from .bert_model import BertOutput, BertEncoderCell, BertSelfOutput
 from mindspore.common.initializer import initializer, TruncatedNormal
 
 
@@ -93,8 +93,7 @@ class LukeEntityAwareAttentionModel(LukeModel):
         entity_embeddings = self.entity_embeddings.construct(entity_ids, entity_position_ids, entity_segment_ids)
         attention_mask = self._compute_extended_attention_mask(word_attention_mask, entity_attention_mask)
 
-        return self.encoder(word_embeddings, entity_embeddings, attention_mask)
-
+        return self.encoder.construct(word_embeddings, entity_embeddings, attention_mask)
 
 class EntityAwareSelfAttention(nn.Cell):
     """EntityAwareSelfAttention"""
@@ -119,15 +118,20 @@ class EntityAwareSelfAttention(nn.Cell):
         self.concat2 = ops.Concat(2)
         self.concat3 = ops.Concat(3)
         self.sotfmax = ops.Softmax()
-
+        self.shape = ops.Shape()
+        self.reshape = ops.Reshape()
+        self.transpose = ops.Transpose()
+        self.softmax = ops.Softmax(axis = -1)
+        
     def transpose_for_scores(self, x):
         new_x_shape = ops.shape(x)[:-1] + (self.num_attention_heads, self.attention_head_size)
-        return ops.transpose(ops.reshape(x, *new_x_shape), (0, 2, 1, 3))
+        out = self.reshape(x, new_x_shape)
+        out = self.transpose(out, (0, 2, 1, 3))
+        return out
 
     def construct(self, word_hidden_states, entity_hidden_states, attention_mask):
         """EntityAwareSelfAttention construct"""
-        word_size = word_hidden_states.size(1)
-
+        word_size = self.shape(word_hidden_states)[1]
         w2w_query_layer = self.transpose_for_scores(self.query(word_hidden_states))
         w2e_query_layer = self.transpose_for_scores(self.w2e_query(word_hidden_states))
         e2w_query_layer = self.transpose_for_scores(self.e2w_query(entity_hidden_states))
@@ -140,10 +144,10 @@ class EntityAwareSelfAttention(nn.Cell):
         w2e_key_layer = key_layer[:, :, word_size:, :]
         e2e_key_layer = key_layer[:, :, word_size:, :]
 
-        w2w_attention_scores = ops.matmul(w2w_query_layer, ops.transpose(w2w_key_layer, (-1, -2)))
-        w2e_attention_scores = ops.matmul(w2e_query_layer, ops.transpose(w2e_key_layer, (-1, -2)))
-        e2w_attention_scores = ops.matmul(e2w_query_layer, ops.transpose(e2w_key_layer, (-1, -2)))
-        e2e_attention_scores = ops.matmul(e2e_query_layer, ops.transpose(e2e_key_layer, (-1, -2)))
+        w2w_attention_scores = ops.matmul(w2w_query_layer, ops.transpose(w2w_key_layer, (0,1, 3, 2)))
+        w2e_attention_scores = ops.matmul(w2e_query_layer, ops.transpose(w2e_key_layer, (0,1, 3, 2)))
+        e2w_attention_scores = ops.matmul(e2w_query_layer, ops.transpose(e2w_key_layer, (0,1, 3, 2)))
+        e2e_attention_scores = ops.matmul(e2e_query_layer, ops.transpose(e2e_key_layer, (0,1, 3, 2)))
 
         word_attention_scores = self.concat3([w2w_attention_scores, w2e_attention_scores])
         entity_attention_scores = self.concat3([e2w_attention_scores, e2e_attention_scores])
@@ -162,7 +166,7 @@ class EntityAwareSelfAttention(nn.Cell):
 
         context_layer = ops.transpose(context_layer, (0, 2, 1, 3))
         new_context_layer_shape = ops.shape(context_layer)[:-2] + (self.all_head_size,)
-        context_layer = ops.reshape(context_layer, *new_context_layer_shape)
+        context_layer = self.reshape(context_layer, new_context_layer_shape)
 
         return context_layer[:, :word_size, :], context_layer[:, word_size:, :]
 
@@ -172,16 +176,19 @@ class EntityAwareAttention(nn.Cell):
 
     def __init__(self, config):
         super(EntityAwareAttention, self).__init__()
-        self.self = EntityAwareSelfAttention(config)
-        self.output = BertOutput(config.hidden_size, config.hidden_size)
+        self.self_attention = EntityAwareSelfAttention(config)
+        self.output = BertSelfOutput(config)
         self.concat = ops.Concat(1)
 
     def construct(self, word_hidden_states, entity_hidden_states, attention_mask):
-        word_self_output, entity_self_output = self.self(word_hidden_states, entity_hidden_states, attention_mask)
+        word_self_output, entity_self_output = self.self_attention.construct(word_hidden_states, entity_hidden_states, attention_mask)
         hidden_states = self.concat([word_hidden_states, entity_hidden_states])
         self_output = self.concat([word_self_output, entity_self_output])
-        output = self.output(hidden_states, self_output)
-        return output[:, : word_hidden_states.size(1), :], output[:, word_hidden_states.size(1):, :]
+        out = self.output.construct(hidden_states, self_output)
+        out1 = out[:, : ops.shape(word_hidden_states)[1], :]
+        out2 = out[:, ops.shape(word_hidden_states)[1]:, :]
+        #return output[:, : ops.shape(word_hidden_states)[1], :], output[:, ops.shape(word_hidden_states)[1]:, :]
+        return out1, out2
 
 
 class EntityAwareLayer(nn.Cell):
@@ -195,16 +202,16 @@ class EntityAwareLayer(nn.Cell):
                                      config.intermediate_size,
                                      activation=config.hidden_act,
                                      weight_init=TruncatedNormal(config.initializer_range)).to_float(mstype.float32)
-        self.output = BertOutput(config.hidden_size, config.hidden_size)
+        self.output = BertOutput(config.intermediate_size, config.hidden_size)
         self.concat = ops.Concat(1)
 
     def construct(self, word_hidden_states, entity_hidden_states, attention_mask):
-        word_attention_output, entity_attention_output = self.attention(
+        word_attention_output, entity_attention_output = self.attention.construct(
             word_hidden_states, entity_hidden_states, attention_mask
         )
         attention_output = self.concat([word_attention_output, entity_attention_output])
         intermediate_output = self.intermediate(attention_output)
-        layer_output = self.output(intermediate_output, attention_output)
+        layer_output = self.output.construct(intermediate_output, attention_output)
 
         return layer_output[:, : ops.shape(word_hidden_states)[1], :], \
                layer_output[:, ops.shape(word_hidden_states)[1]:, :]
@@ -219,6 +226,8 @@ class EntityAwareEncoder(nn.Cell):
         self.layer = nn.CellList([EntityAwareLayer(config) for _ in range(config.num_hidden_layers)])
 
     def construct(self, word_hidden_states, entity_hidden_states, attention_mask):
-        word_hidden_states, entity_hidden_states = self.layer(word_hidden_states,
-                                                              entity_hidden_states, attention_mask)
+        for layer_module in self.layer:
+            word_hidden_states, entity_hidden_states = layer_module.construct(
+                word_hidden_states, entity_hidden_states, attention_mask
+            )
         return word_hidden_states, entity_hidden_states
