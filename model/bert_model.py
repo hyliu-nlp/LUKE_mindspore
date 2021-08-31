@@ -631,7 +631,6 @@ class BertSelfAttention(nn.Cell):
                  use_relative_positions=False,
                  compute_type=mstype.float32):
         super(BertSelfAttention, self).__init__()
-        hidden_size = 768
         if hidden_size % num_attention_heads != 0:
             raise ValueError("The hidden size (%d) is not a multiple of the number "
                              "of attention heads (%d)" % (hidden_size, num_attention_heads))
