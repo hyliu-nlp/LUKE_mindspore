@@ -1,0 +1,11 @@
+
+*.info
+*.json
+*.pyc
+*.pyc
+*.xml
+*.iml
+*.dat
+*.ipynb_checkpoints
+pytorch_model.bin
+luke-large-qa(fail).ckpt
