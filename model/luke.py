@@ -22,6 +22,7 @@ import mindspore.common.dtype as mstype
 from .luke_embeddings import RobertaEmbeddings, EntityEmbeddings
 from .bert_model import BertOutput, BertEncoderCell, BertSelfOutput
 from mindspore.common.initializer import initializer, TruncatedNormal
+import mindspore.numpy as np
 
 
 class LukeModel(nn.Cell):
@@ -29,71 +30,50 @@ class LukeModel(nn.Cell):
 
     def __init__(self, config):
         super(LukeModel, self).__init__()
-
-        self.config = config
         self.encoder = BertEncoderCell(config.batch_size)
         # self.pooler = BertPooler(config)
         self.pooler = nn.Dense(config.hidden_size, config.hidden_size,
                                activation="tanh",
                                weight_init=TruncatedNormal(config.initializer_range)).to_float(config.compute_type)
-        #if self.config.bert_model_name and "roberta" in self.config.bert_model_name:
+        # if self.config.bert_model_name and "roberta" in self.config.bert_model_name:
         self.embeddings = RobertaEmbeddings(config)
         self.embeddings.token_type_embeddings.requires_grad = False
-        #else:
-            #self.embeddings = BertEmbeddings(config)
+        # else:
+        # self.embeddings = BertEmbeddings(config)
         self.entity_embeddings = EntityEmbeddings(config)
 
-    def construct(self, word_ids, word_segment_ids, word_attention_mask,
-                  entity_ids, entity_position_ids, entity_segment_ids, entity_attention_mask
-                  ):
-        """LukeModel construct"""
-        word_seq_size = word_ids.size(1)
 
-        embedding_output = self.embeddings(word_ids, word_segment_ids)
-
-        attention_mask = self._compute_extended_attention_mask(word_attention_mask, entity_attention_mask)
-        if entity_ids is not None:
-            entity_embedding_output = self.entity_embeddings(entity_ids, entity_position_ids, entity_segment_ids)
-            embedding_output = ops.Concat([embedding_output, entity_embedding_output], dim=1)
-
-        encoder_outputs = self.encoder(embedding_output, attention_mask, [None] * self.config.num_hidden_layers)
-        sequence_output = encoder_outputs[0]
-        word_sequence_output = sequence_output[:, :word_seq_size, :]
-        pooled_output = self.pooler(sequence_output)
-
-        if entity_ids is not None:
-            entity_sequence_output = sequence_output[:, word_seq_size:, :]
-            return (word_sequence_output, entity_sequence_output, pooled_output,) + encoder_outputs[1:]
-
-        return (word_sequence_output, pooled_output,) + encoder_outputs[1:]
-
-    def _compute_extended_attention_mask(self, word_attention_mask, entity_attention_mask):
-        attention_mask = word_attention_mask
-        if entity_attention_mask is not None:
-            op_Concat = ops.Concat(axis = 1)
-            attention_mask = op_Concat((attention_mask, entity_attention_mask))
-        unsqueezee = ops.ExpandDims()
-        extended_attention_mask = unsqueezee(unsqueezee(attention_mask, 1), 2)
-        extended_attention_mask = extended_attention_mask.astype(mstype.float32)
-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
-        return extended_attention_mask
+def _compute_extended_attention_mask(word_attention_mask, entity_attention_mask):
+    attention_mask = word_attention_mask
+    if entity_attention_mask is not None:
+        op_Concat = ops.Concat(1)
+        attention_mask = op_Concat((attention_mask, entity_attention_mask))
+    unsqueezee = ops.ExpandDims()
+    extended_attention_mask = unsqueezee(unsqueezee(attention_mask, 1), 2)
+    extended_attention_mask = extended_attention_mask.astype(mstype.float32)
+    extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+    return extended_attention_mask
 
 
-class LukeEntityAwareAttentionModel(LukeModel):
+class LukeEntityAwareAttentionModel(nn.Cell):
     """LukeEntityAwareAttentionModel"""
 
     def __init__(self, config):
-        super(LukeEntityAwareAttentionModel, self).__init__(config)
-        self.config = config
+        super(LukeEntityAwareAttentionModel, self).__init__()
+        # self.Lukemodel = LukeModel(config)
+        self.embeddings = RobertaEmbeddings(config)
+        self.EntityEmbeddings = EntityEmbeddings(config)
         self.encoder = EntityAwareEncoder(config)
 
-    def construct(self, word_ids, word_segment_ids, word_attention_mask, entity_ids,
-                  entity_position_ids, entity_segment_ids, entity_attention_mask):
-        word_embeddings = self.embeddings.construct(word_ids, word_segment_ids)
-        entity_embeddings = self.entity_embeddings.construct(entity_ids, entity_position_ids, entity_segment_ids)
-        attention_mask = self._compute_extended_attention_mask(word_attention_mask, entity_attention_mask)
+    def construct(self, word_ids, word_segment_ids, word_attention_mask, entity_ids, entity_position_ids,
+                  entity_segment_ids, entity_attention_mask):
+        # return 1
+        word_embeddings = self.embeddings(word_ids, word_segment_ids)
+        entity_embeddings = self.EntityEmbeddings(entity_ids, entity_position_ids, entity_segment_ids)
+        attention_mask = _compute_extended_attention_mask(word_attention_mask, entity_attention_mask)
+        output = self.encoder(word_embeddings, entity_embeddings, attention_mask)
+        return output
 
-        return self.encoder.construct(word_embeddings, entity_embeddings, attention_mask)
 
 class EntityAwareSelfAttention(nn.Cell):
     """EntityAwareSelfAttention"""
@@ -121,8 +101,8 @@ class EntityAwareSelfAttention(nn.Cell):
         self.shape = ops.Shape()
         self.reshape = ops.Reshape()
         self.transpose = ops.Transpose()
-        self.softmax = ops.Softmax(axis = -1)
-        
+        self.softmax = ops.Softmax(axis=-1)
+
     def transpose_for_scores(self, x):
         new_x_shape = ops.shape(x)[:-1] + (self.num_attention_heads, self.attention_head_size)
         out = self.reshape(x, new_x_shape)
@@ -136,7 +116,6 @@ class EntityAwareSelfAttention(nn.Cell):
         w2e_query_layer = self.transpose_for_scores(self.w2e_query(word_hidden_states))
         e2w_query_layer = self.transpose_for_scores(self.e2w_query(entity_hidden_states))
         e2e_query_layer = self.transpose_for_scores(self.e2e_query(entity_hidden_states))
-
         key_layer = self.transpose_for_scores(self.key(self.concat([word_hidden_states, entity_hidden_states])))
 
         w2w_key_layer = key_layer[:, :, :word_size, :]
@@ -144,16 +123,16 @@ class EntityAwareSelfAttention(nn.Cell):
         w2e_key_layer = key_layer[:, :, word_size:, :]
         e2e_key_layer = key_layer[:, :, word_size:, :]
 
-        w2w_attention_scores = ops.matmul(w2w_query_layer, ops.transpose(w2w_key_layer, (0,1, 3, 2)))
-        w2e_attention_scores = ops.matmul(w2e_query_layer, ops.transpose(w2e_key_layer, (0,1, 3, 2)))
-        e2w_attention_scores = ops.matmul(e2w_query_layer, ops.transpose(e2w_key_layer, (0,1, 3, 2)))
-        e2e_attention_scores = ops.matmul(e2e_query_layer, ops.transpose(e2e_key_layer, (0,1, 3, 2)))
+        w2w_attention_scores = ops.matmul(w2w_query_layer, ops.transpose(w2w_key_layer, (0, 1, 3, 2)))
+        w2e_attention_scores = ops.matmul(w2e_query_layer, ops.transpose(w2e_key_layer, (0, 1, 3, 2)))
+        e2w_attention_scores = ops.matmul(e2w_query_layer, ops.transpose(e2w_key_layer, (0, 1, 3, 2)))
+        e2e_attention_scores = ops.matmul(e2e_query_layer, ops.transpose(e2e_key_layer, (0, 1, 3, 2)))
 
         word_attention_scores = self.concat3([w2w_attention_scores, w2e_attention_scores])
         entity_attention_scores = self.concat3([e2w_attention_scores, e2e_attention_scores])
         attention_scores = self.concat2([word_attention_scores, entity_attention_scores])
 
-        attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+        attention_scores = attention_scores / np.sqrt(self.attention_head_size)
         attention_scores = attention_scores + attention_mask
 
         attention_probs = self.softmax(attention_scores)
@@ -181,13 +160,14 @@ class EntityAwareAttention(nn.Cell):
         self.concat = ops.Concat(1)
 
     def construct(self, word_hidden_states, entity_hidden_states, attention_mask):
-        word_self_output, entity_self_output = self.self_attention.construct(word_hidden_states, entity_hidden_states, attention_mask)
+        word_self_output, entity_self_output = self.self_attention.construct(word_hidden_states, entity_hidden_states,
+                                                                             attention_mask)
         hidden_states = self.concat([word_hidden_states, entity_hidden_states])
         self_output = self.concat([word_self_output, entity_self_output])
         out = self.output.construct(hidden_states, self_output)
         out1 = out[:, : ops.shape(word_hidden_states)[1], :]
         out2 = out[:, ops.shape(word_hidden_states)[1]:, :]
-        #return output[:, : ops.shape(word_hidden_states)[1], :], output[:, ops.shape(word_hidden_states)[1]:, :]
+        # return output[:, : ops.shape(word_hidden_states)[1], :], output[:, ops.shape(word_hidden_states)[1]:, :]
         return out1, out2
 
 
@@ -198,7 +178,7 @@ class EntityAwareLayer(nn.Cell):
         super(EntityAwareLayer, self).__init__()
 
         self.attention = EntityAwareAttention(config)
-        self.intermediate = nn.Dense(config.hidden_size, 
+        self.intermediate = nn.Dense(config.hidden_size,
                                      config.intermediate_size,
                                      activation=config.hidden_act,
                                      weight_init=TruncatedNormal(config.initializer_range)).to_float(mstype.float32)
@@ -206,12 +186,12 @@ class EntityAwareLayer(nn.Cell):
         self.concat = ops.Concat(1)
 
     def construct(self, word_hidden_states, entity_hidden_states, attention_mask):
-        word_attention_output, entity_attention_output = self.attention.construct(
+        word_attention_output, entity_attention_output = self.attention(
             word_hidden_states, entity_hidden_states, attention_mask
         )
         attention_output = self.concat([word_attention_output, entity_attention_output])
         intermediate_output = self.intermediate(attention_output)
-        layer_output = self.output.construct(intermediate_output, attention_output)
+        layer_output = self.output(intermediate_output, attention_output)
 
         return layer_output[:, : ops.shape(word_hidden_states)[1], :], \
                layer_output[:, ops.shape(word_hidden_states)[1]:, :]
@@ -222,12 +202,12 @@ class EntityAwareEncoder(nn.Cell):
 
     def __init__(self, config):
         super(EntityAwareEncoder, self).__init__()
-        #self.layer = EntityAwareLayer(config)
+        # self.layer = EntityAwareLayer(config)
         self.layer = nn.CellList([EntityAwareLayer(config) for _ in range(config.num_hidden_layers)])
 
     def construct(self, word_hidden_states, entity_hidden_states, attention_mask):
         for layer_module in self.layer:
-            word_hidden_states, entity_hidden_states = layer_module.construct(
+            word_hidden_states, entity_hidden_states = layer_module(
                 word_hidden_states, entity_hidden_states, attention_mask
             )
         return word_hidden_states, entity_hidden_states
