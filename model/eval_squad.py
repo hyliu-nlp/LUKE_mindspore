@@ -27,8 +27,10 @@ import re
 import json
 import sys
 
+
 class SquadExample():
     """extract column contents from raw data"""
+
     def __init__(self,
                  qas_id,
                  question_text,
@@ -44,6 +46,7 @@ class SquadExample():
         self.start_position = start_position
         self.end_position = end_position
         self.is_impossible = is_impossible
+
 
 def read_squad_examples(input_file, is_training, version_2_with_negative=False):
     """Return list of SquadExample from input_data or input_file (SQuAD json file)"""
@@ -70,7 +73,6 @@ def read_squad_examples(input_file, is_training, version_2_with_negative=False):
                 prev_is_whitespace = False
             char_to_word_offset.append(len(doc_tokens) - 1)
         return (doc_tokens, char_to_word_offset)
-
 
     def process_one_example(qa, is_training, version_2_with_negative, doc_tokens, char_to_word_offset):
         qas_id = qa["id"]
@@ -105,7 +107,6 @@ def read_squad_examples(input_file, is_training, version_2_with_negative=False):
             is_impossible=is_impossible)
         return example
 
-
     examples = []
     for entry in input_data:
         for paragraph in entry["paragraphs"]:
@@ -117,6 +118,7 @@ def read_squad_examples(input_file, is_training, version_2_with_negative=False):
                 if one_example is not None:
                     examples.append(one_example)
     return examples
+
 
 def _compute_softmax(scores):
     """Compute softmax probability over raw logits."""
@@ -139,6 +141,7 @@ def _compute_softmax(scores):
     for score in exp_scores:
         probs.append(score / total_sum)
     return probs
+
 
 def get_nbest(prelim_predictions, features, example, n_best_size, do_lower_case):
     """get nbest predictions"""
@@ -189,6 +192,7 @@ def get_nbest(prelim_predictions, features, example, n_best_size, do_lower_case)
     assert len(nbest) >= 1
     return nbest
 
+
 def _get_best_indexes(logits, n_best_size):
     """Get the n-best logits from a list."""
     index_and_score = sorted(enumerate(logits), key=lambda x: x[1], reverse=True)
@@ -199,6 +203,7 @@ def _get_best_indexes(logits, n_best_size):
             break
         best_indexes.append(score[0])
     return best_indexes
+
 
 def get_prelim_predictions(features, unique_id_to_result, n_best_size, max_answer_length):
     """get prelim predictions"""
@@ -248,6 +253,7 @@ def get_prelim_predictions(features, unique_id_to_result, n_best_size, max_answe
         reverse=True)
     return prelim_predictions
 
+
 def get_predictions(all_examples, all_features, all_results, n_best_size, max_answer_length, do_lower_case):
     """Get final predictions"""
     example_index_to_features = collections.defaultdict(list)
@@ -288,6 +294,7 @@ def get_predictions(all_examples, all_features, all_results, n_best_size, max_an
         all_predictions[example.qas_id] = nbest_json[0]["text"]
     return all_predictions
 
+
 def write_predictions(all_examples, all_features, all_results, n_best_size,
                       max_answer_length, do_lower_case):
     """Write final predictions to the json file and log-odds of null if needed."""
@@ -296,8 +303,10 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
                                       n_best_size, max_answer_length, do_lower_case)
     return all_predictions
 
+
 def normalize_answer(s):
     """Lower text and remove punctuation, articles and extra whitespace."""
+
     def remove_articles(text):
         return re.sub(r'\b(a|an|the)\b', ' ', text)
 
@@ -313,6 +322,7 @@ def normalize_answer(s):
 
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
+
 def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
     scores_for_ground_truths = []
     for ground_truth in ground_truths:
@@ -320,8 +330,10 @@ def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
         scores_for_ground_truths.append(score)
     return max(scores_for_ground_truths)
 
+
 def exact_match_score(prediction, ground_truth):
     return normalize_answer(prediction) == normalize_answer(ground_truth)
+
 
 def evaluate(dataset, predictions):
     """do evaluation"""
@@ -349,6 +361,7 @@ def evaluate(dataset, predictions):
     print("f1:", f1)
     return {'exact_match': exact_match, 'f1': f1}
 
+
 def SQuad_postprocess(dataset_file, all_predictions, output_metrics="output.json"):
     with open(dataset_file) as ds:
         dataset_json = json.load(ds)
@@ -357,6 +370,7 @@ def SQuad_postprocess(dataset_file, all_predictions, output_metrics="output.json
     print(json.dumps(re_json))
     with open(output_metrics, 'w') as wr:
         wr.write(json.dumps(re_json))
+
 
 def f1_score(prediction, ground_truth):
     """calculate f1 score"""
@@ -370,4 +384,3 @@ def f1_score(prediction, ground_truth):
     recall = 1.0 * num_same / len(ground_truth_tokens)
     f1 = (2 * precision * recall) / (precision + recall)
     return f1
-

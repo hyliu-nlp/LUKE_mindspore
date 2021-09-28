@@ -49,7 +49,8 @@ class EntityEmbeddings(nn.Cell):
 
     def construct(self, entity_ids, position_ids, token_type_ids=None):
         """EntityEmbeddings for luke"""
-
+        # print("entity_ids:", entity_ids)
+        # print("position_ids:", position_ids)
         if token_type_ids is None:
             token_type_ids = ops.zeros_like(entity_ids)
 

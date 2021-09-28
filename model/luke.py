@@ -16,6 +16,8 @@
     Encoder classes for LUKE.
 """
 import math
+
+import mindspore
 import mindspore.ops as ops
 import mindspore.nn as nn
 import mindspore.common.dtype as mstype
@@ -23,6 +25,8 @@ from .luke_embeddings import RobertaEmbeddings, EntityEmbeddings
 from .bert_model import BertOutput, BertEncoderCell, BertSelfOutput
 from mindspore.common.initializer import initializer, TruncatedNormal
 import mindspore.numpy as np
+
+grad_scale = mindspore.ops.MultitypeFuncGraph("grad_scale")
 
 
 class LukeModel(nn.Cell):
@@ -69,9 +73,16 @@ class LukeEntityAwareAttentionModel(nn.Cell):
                   entity_segment_ids, entity_attention_mask):
         # return 1
         word_embeddings = self.embeddings(word_ids, word_segment_ids)
+        # print("word_embedding:")
+        # print(word_embeddings)
         entity_embeddings = self.EntityEmbeddings(entity_ids, entity_position_ids, entity_segment_ids)
+        # print("entity_embeddings:")
+        # print(entity_embeddings)
         attention_mask = _compute_extended_attention_mask(word_attention_mask, entity_attention_mask)
+        # print("attention_mask:")
+        # print(attention_mask)
         output = self.encoder(word_embeddings, entity_embeddings, attention_mask)
+        # print(output)
         return output
 
 
@@ -93,7 +104,7 @@ class EntityAwareSelfAttention(nn.Cell):
         self.e2w_query = nn.Dense(config.hidden_size, self.all_head_size)
         self.e2e_query = nn.Dense(config.hidden_size, self.all_head_size)
 
-        self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
+        self.dropout = nn.Dropout(1-config.attention_probs_dropout_prob)
         self.concat = ops.Concat(1)
         self.concat2 = ops.Concat(2)
         self.concat3 = ops.Concat(3)
@@ -162,12 +173,18 @@ class EntityAwareAttention(nn.Cell):
     def construct(self, word_hidden_states, entity_hidden_states, attention_mask):
         word_self_output, entity_self_output = self.self_attention.construct(word_hidden_states, entity_hidden_states,
                                                                              attention_mask)
+        # print("word_self_output", word_self_output)  verify
+
         hidden_states = self.concat([word_hidden_states, entity_hidden_states])
+        # print("hidden_states:", hidden_states) verify
         self_output = self.concat([word_self_output, entity_self_output])
-        out = self.output.construct(hidden_states, self_output)
+        # print("self_output:", self_output) # verify
+        out = self.output.construct(self_output, hidden_states)
+        # print("output", out) verify
         out1 = out[:, : ops.shape(word_hidden_states)[1], :]
         out2 = out[:, ops.shape(word_hidden_states)[1]:, :]
         # return output[:, : ops.shape(word_hidden_states)[1], :], output[:, ops.shape(word_hidden_states)[1]:, :]
+        # print("out1,out2:", out1, out2)
         return out1, out2
 
 
@@ -189,12 +206,17 @@ class EntityAwareLayer(nn.Cell):
         word_attention_output, entity_attention_output = self.attention(
             word_hidden_states, entity_hidden_states, attention_mask
         )
+        # print("word_attention_output", word_attention_output) verify
+
         attention_output = self.concat([word_attention_output, entity_attention_output])
         intermediate_output = self.intermediate(attention_output)
         layer_output = self.output(intermediate_output, attention_output)
+        # print("layer_output", layer_output) verify
+        l_out1 = layer_output[:, : ops.shape(word_hidden_states)[1], :]
+        # print("l_out1", l_out1)
+        l_out2 = layer_output[:, ops.shape(word_hidden_states)[1]:, :]
+        return l_out1, l_out2
 
-        return layer_output[:, : ops.shape(word_hidden_states)[1], :], \
-               layer_output[:, ops.shape(word_hidden_states)[1]:, :]
 
 
 class EntityAwareEncoder(nn.Cell):
@@ -210,4 +232,6 @@ class EntityAwareEncoder(nn.Cell):
             word_hidden_states, entity_hidden_states = layer_module(
                 word_hidden_states, entity_hidden_states, attention_mask
             )
+        # print("word_hidden_states:", word_hidden_states)
+        # print("entity_hidden_states:", entity_hidden_states)
         return word_hidden_states, entity_hidden_states

@@ -46,7 +46,7 @@ class EntityEmbeddings(nn.Module):
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
 
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.dropout = nn.Dropout(1-config.hidden_dropout_prob)
 
     def forward(
             self, entity_ids: torch.LongTensor, position_ids: torch.LongTensor, token_type_ids: torch.LongTensor = None
@@ -249,7 +249,7 @@ class EntityAwareSelfAttention(nn.Module):
         self.e2w_query = nn.Linear(config.hidden_size, self.all_head_size)
         self.e2e_query = nn.Linear(config.hidden_size, self.all_head_size)
 
-        self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
+        self.dropout = nn.Dropout(1-config.attention_probs_dropout_prob)
 
     def transpose_for_scores(self, x):
         new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)

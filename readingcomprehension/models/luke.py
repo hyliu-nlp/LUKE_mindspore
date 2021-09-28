@@ -15,6 +15,8 @@
 """
     luke for tagging and reading comprehension tasks
 """
+from typing import Optional
+
 import mindspore.nn as nn
 import mindspore.ops as ops
 
@@ -217,24 +219,29 @@ class LukeSquadCell(nn.Cell):
             self.loss_scale = Parameter(Tensor(scale_update_cell.get_loss_scale(), dtype=mstype.float32))
 
     def construct(self,
-                  input_ids,
-                  input_mask,
-                  token_type_id,
-                  start_position,
-                  end_position,
-                  unique_id,
-                  is_impossible,
-                  sens=None):
+                  word_ids,
+                  word_segment_ids,
+                  word_attention_mask,
+                  entity_ids,
+                  entity_position_ids,
+                  entity_segment_ids,
+                  entity_attention_mask,
+                  start_positions,
+                  end_positions,
+                  sens: Optional[int] = None
+                  ):
         """LukeSquad"""
         weights = self.weights
         init = False
-        loss = self.network(input_ids,
-                            input_mask,
-                            token_type_id,
-                            start_position,
-                            end_position,
-                            unique_id,
-                            is_impossible)
+        loss = self.network(word_ids,
+                            word_segment_ids,
+                            word_attention_mask,
+                            entity_ids,
+                            entity_position_ids,
+                            entity_segment_ids,
+                            entity_attention_mask,
+                            start_positions,
+                            end_positions)
         if sens is None:
             scaling_sens = self.loss_scale
         else:
@@ -244,15 +251,15 @@ class LukeSquadCell(nn.Cell):
             init = F.depend(init, loss)
             clear_status = self.clear_status(init)
             scaling_sens = F.depend(scaling_sens, clear_status)
-        grads = self.grad(self.network, weights)(input_ids,
-                                                 input_mask,
-                                                 token_type_id,
-                                                 start_position,
-                                                 end_position,
-                                                 unique_id,
-                                                 is_impossible,
-                                                 self.cast(scaling_sens,
-                                                           mstype.float32))
+        grads = self.grad(self.network, weights)(word_ids,
+                                                 word_segment_ids,
+                                                 word_attention_mask,
+                                                 entity_ids,
+                                                 entity_position_ids,
+                                                 entity_segment_ids,
+                                                 entity_attention_mask,
+                                                 start_positions,
+                                                 end_positions)
         grads = self.hyper_map(F.partial(grad_scale, scaling_sens), grads)
         grads = self.hyper_map(F.partial(clip_grad, GRADIENT_CLIP_TYPE, GRADIENT_CLIP_VALUE), grads)
         if self.reducer_flag:
