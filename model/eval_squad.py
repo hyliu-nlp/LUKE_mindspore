@@ -1,24 +1,4 @@
-from dataset.build_dataset import build_dataset
-import mindspore.dataset as ds
-import os
-import numpy as np
-from mindspore.mindrecord import FileWriter
-import json
-from readingcomprehension.models.luke import LukeForReadingComprehension, LukeEntityAwareAttentionModel
-import mindspore.common.dtype as mstype
-from model.bert_model import BertConfig
-from mindspore import context
-from model.luke import LukeModel, EntityAwareEncoder
-from mindspore import Tensor, context
-from mindspore import dtype as mstype
-import mindspore.ops as ops
-import mindspore.nn as nn
-from model.bert_model import BertOutput
-from mindspore.common.initializer import TruncatedNormal
-from mindspore.ops import composite as C
-import mindspore
-from mindspore.ops import operations as P
-from mindspore.train.model import Model
+
 import collections
 import math
 from collections import Counter

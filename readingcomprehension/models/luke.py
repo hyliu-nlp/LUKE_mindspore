@@ -19,9 +19,6 @@ from typing import Optional
 
 import mindspore.nn as nn
 import mindspore.ops as ops
-
-from model.luke import LukeEntityAwareAttentionModel
-import mindspore.nn as nn
 from mindspore.ops import operations as P
 from mindspore.ops import functional as F
 from mindspore.ops import composite as C
@@ -32,7 +29,7 @@ from mindspore.nn.wrap.grad_reducer import DistributedGradReducer
 from mindspore.context import ParallelMode
 from mindspore.communication.management import get_group_size
 from mindspore import context
-import mindspore.numpy as np
+from mindtext.modules.encoder.luke import LukeEntityAwareAttentionModel
 
 _grad_overflow = C.MultitypeFuncGraph("_grad_overflow")
 GRADIENT_CLIP_TYPE = 1
@@ -71,7 +68,7 @@ class LukeForReadingComprehension(nn.Cell):
 
     def __init__(self, config):
         super(LukeForReadingComprehension, self).__init__()
-        self.LukeEntityAwareAttentionModel = LukeEntityAwareAttentionModel(config)
+        self.luke = LukeEntityAwareAttentionModel(config)
         self.qa_outputs = nn.Dense(config.hidden_size, 2)
         self.split = ops.Split(-1, 2)
         self.squeeze = ops.Squeeze(-1)
@@ -85,12 +82,10 @@ class LukeForReadingComprehension(nn.Cell):
             entity_ids,
             entity_position_ids,
             entity_segment_ids,
-            entity_attention_mask,
-            start_positions=None,
-            end_positions=None,
+            entity_attention_mask
     ):
         """LukeForReadingComprehension construct"""
-        encoder_outputs = self.LukeEntityAwareAttentionModel(
+        encoder_outputs = self.luke(
             word_ids,
             word_segment_ids,
             word_attention_mask,
@@ -105,29 +100,7 @@ class LukeForReadingComprehension(nn.Cell):
         start_logits, end_logits = self.split(logits)
         start_logits = self.squeeze(start_logits)
         end_logits = self.squeeze(end_logits)
-        return (start_logits, end_logits,)
-
-
-#         return 1
-#         if start_positions is not None and end_positions is not None:
-#             if len(self.shape(start_positions)) > 1:
-#                 start_positions = self.squeeze(start_positions)
-#             if len(self.shape(end_positions)) > 1:
-#                 end_positions = self.squeeze(end_positions)
-
-#             ignored_index = ops.shape(start_logits)[1]
-#             start_positions = C.clip_by_value(start_positions, 0, ignored_index)
-#             end_positions = C.clip_by_value(end_positions, 0, ignored_index)
-
-#             loss_fct = nn.SoftmaxCrossEntropyWithLogits(sparse = True)
-#             #loss_fct = CrossEntropyLoss(ignore_index=ignored_index)
-#             start_loss = loss_fct(start_logits, start_positions)
-#             end_loss = loss_fct(end_logits, end_positions)
-#             total_loss = (start_loss + end_loss) / 2
-#             outputs = (total_loss,)
-#         else:
-#             outputs = tuple()
-#         return outputs + (start_logits, end_logits,)
+        return start_logits, end_logits
 
 
 class LukeForReadingComprehensionWithLoss(nn.Cell):
@@ -150,6 +123,9 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
             start_positions=None,
             end_positions=None
     ):
+        """
+        LukeForReadingComprehensionWithLoss's construct
+        """
         start_logits, end_logits = self.net(word_ids,
                                             word_segment_ids,
                                             word_attention_mask,
@@ -164,7 +140,7 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
                 end_positions = self.squeeze(end_positions)
 
             ignored_index = start_logits.size(1)
-            # *.clamp_算子
+
             start_positions.clamp_(0, ignored_index)
             end_positions.clamp_(0, ignored_index)
 
@@ -179,7 +155,9 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
 
 
 class LukeSquadCell(nn.Cell):
-
+    """
+    LukeSquadCell for Train
+    """
     def __init__(self, network, optimizer, scale_update_cell=None):
         super(LukeSquadCell, self).__init__(auto_prefix=False)
         self.network = network
@@ -284,11 +262,3 @@ class LukeSquadCell(nn.Cell):
         if not overflow:
             self.optimizer(grads)
         return (loss, cond)
-
-
-if __name__ == "__main__":
-    import mindspore.nn as nn
-
-    model = LukeForReadingComprehension(config='')
-    loss = nn.SoftmaxCrossEntropyWithLogits
-    LukeForReadingComprehensionWithLoss(model, loss)
