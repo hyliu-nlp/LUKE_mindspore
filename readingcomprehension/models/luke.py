@@ -29,7 +29,7 @@ from mindspore.nn.wrap.grad_reducer import DistributedGradReducer
 from mindspore.context import ParallelMode
 from mindspore.communication.management import get_group_size
 from mindspore import context
-from mindtext.modules.encoder.luke import LukeEntityAwareAttentionModel
+from model.luke import LukeEntityAwareAttentionModel
 
 _grad_overflow = C.MultitypeFuncGraph("_grad_overflow")
 GRADIENT_CLIP_TYPE = 1

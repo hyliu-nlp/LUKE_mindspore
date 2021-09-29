@@ -1,4 +1,4 @@
-
+*.npy
 *.info
 *.json
 *.pyc
@@ -6,6 +6,8 @@
 *.xml
 *.iml
 *.dat
+*.mindrecord
+*.db
 *.ipynb_checkpoints
 pytorch_model.bin
 luke-large-qa(fail).ckpt

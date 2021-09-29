@@ -29,7 +29,7 @@ import mindspore.numpy as np
 from mindspore.common.parameter import Parameter
 from mindspore.common.initializer import initializer, TruncatedNormal
 
-from mindtext.embeddings.luke_embeddings import RobertaEmbeddings, EntityEmbeddings
+from .luke_embeddings import RobertaEmbeddings, EntityEmbeddings
 
 grad_scale = mindspore.ops.MultitypeFuncGraph("grad_scale")
 
