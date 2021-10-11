@@ -67,5 +67,6 @@ class Squad:
 if __name__ == "__main__":
     testloader = Squad()
 
-    datainfo = testloader.load("train-v1.1.json")
-    print(datainfo.head(5))
+    datainfo = testloader.load("dev-v1.1.json")
+    print(datainfo)
+

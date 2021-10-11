@@ -82,9 +82,12 @@ class LukeForReadingComprehension(nn.Cell):
             entity_ids,
             entity_position_ids,
             entity_segment_ids,
-            entity_attention_mask
+            entity_attention_mask,
+            start_positions=None,
+            end_positions=None
     ):
         """LukeForReadingComprehension construct"""
+
         encoder_outputs = self.luke(
             word_ids,
             word_segment_ids,
@@ -106,9 +109,14 @@ class LukeForReadingComprehension(nn.Cell):
 class LukeForReadingComprehensionWithLoss(nn.Cell):
     """LukeForReadingComprehensionWithLoss"""
 
-    def __init__(self, net, loss):
+    def __init__(self, net, loss: Optional[nn.Cell] = None):
+        super(LukeForReadingComprehensionWithLoss, self).__init__()
         self.net = net
-        self.loss = loss
+        if isinstance(loss, nn.Cell):
+            self.loss = loss
+        else:
+            self.loss = nn.SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
+
         self.squeeze = ops.Squeeze(-1)
 
     def construct(
@@ -134,19 +142,20 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
                                             entity_segment_ids,
                                             entity_attention_mask)
         if start_positions is not None and end_positions is not None:
-            if len(start_positions.size()) > 1:
-                start_positions = self.squeeze(start_positions)
-            if len(end_positions.size()) > 1:
-                end_positions = self.squeeze(end_positions)
-
-            ignored_index = start_logits.size(1)
-
-            start_positions.clamp_(0, ignored_index)
-            end_positions.clamp_(0, ignored_index)
-
+            # if len(start_positions.size()) > 1:
+            #     start_positions = self.squeeze(start_positions)
+            # if len(end_positions.size()) > 1:
+            #     end_positions = self.squeeze(end_positions)
+            #
+            # ignored_index = start_logits.size(1)
+            #
+            # start_positions.clamp_(0, ignored_index)
+            # end_positions.clamp_(0, ignored_index)
+            print("start_logits:", start_logits)
+            print("start_positions:", start_positions)
             start_loss = self.loss(start_logits, start_positions)
             end_loss = self.loss(end_logits, end_positions)
-            total_loss = (start_loss + end_loss) / 2
+            total_loss = (start_loss + end_loss) / 2.0
             outputs = (total_loss,)
         else:
             outputs = tuple()

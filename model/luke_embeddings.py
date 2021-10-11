@@ -64,8 +64,12 @@ class EntityEmbeddings(nn.Cell):
         position_embeddings = position_embeddings / clamp(ops.reduce_sum(position_embedding_mask, -2), minimum=1e-7)
 
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
+        # print("entity_embeddings:", entity_embeddings)
+        # print("position_embeddings:", position_embeddings)
+        # print("token_type_embeddings:", token_type_embeddings)
 
-        embeddings = entity_embeddings + position_embeddings + token_type_embeddings
+        embeddings = entity_embeddings + position_embeddings
+        embeddings += token_type_embeddings
 
         embeddings = self.layer_norm(embeddings)
         embeddings = self.dropout(embeddings)
