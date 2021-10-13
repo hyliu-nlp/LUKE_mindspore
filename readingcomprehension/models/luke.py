@@ -118,6 +118,8 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
             self.loss = nn.SoftmaxCrossEntropyWithLogits(sparse=True, reduction='mean')
 
         self.squeeze = ops.Squeeze(-1)
+        self.shape = ops.Shape()
+        self.clamp = ops.clip_by_value
 
     def construct(
             self,
@@ -142,40 +144,40 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
                                             entity_segment_ids,
                                             entity_attention_mask)
         if start_positions is not None and end_positions is not None:
-            # if len(start_positions.size()) > 1:
-            #     start_positions = self.squeeze(start_positions)
-            # if len(end_positions.size()) > 1:
-            #     end_positions = self.squeeze(end_positions)
-            #
-            # ignored_index = start_logits.size(1)
-            #
-            # start_positions.clamp_(0, ignored_index)
-            # end_positions.clamp_(0, ignored_index)
-            print("start_logits:", start_logits)
-            print("start_positions:", start_positions)
+            if len(start_positions.shape) > 1:
+                start_positions = self.squeeze(start_positions)
+            if len(end_positions.shape) > 1:
+                end_positions = self.squeeze(end_positions)
+
+            ignored_index = self.shape(start_logits)[1]
+
+            start_positions = self.clamp(start_positions, 0, ignored_index)
+            end_positions = self.clamp(end_positions, 0, ignored_index)
+
             start_loss = self.loss(start_logits, start_positions)
             end_loss = self.loss(end_logits, end_positions)
             total_loss = (start_loss + end_loss) / 2.0
-            outputs = (total_loss,)
-        else:
-            outputs = tuple()
+            outputs = total_loss
 
-        return outputs + (start_logits, end_logits,)
+        else:
+            outputs = (start_logits, end_logits,)
+
+        return outputs
 
 
 class LukeSquadCell(nn.Cell):
     """
     LukeSquadCell for Train
     """
-    def __init__(self, network, optimizer, scale_update_cell=None):
+    def __init__(self, network: nn.Cell, optimizer: nn.Optimizer, scale_update_cell: Optional[nn.Cell] = None):
         super(LukeSquadCell, self).__init__(auto_prefix=False)
         self.network = network
         self.network.set_grad()
         self.weights = optimizer.parameters
         self.optimizer = optimizer
-        self.grad = C.GradOperation(get_by_list=True, sens_param=True)
+        self.grad = ops.GradOperation(get_by_list=True, sens_param=True)
         self.reducer_flag = False
-        self.allreduce = P.AllReduce()
+        self.allreduce = ops.AllReduce()
         self.parallel_mode = context.get_auto_parallel_context("parallel_mode")
         if self.parallel_mode in [ParallelMode.DATA_PARALLEL, ParallelMode.HYBRID_PARALLEL]:
             self.reducer_flag = True
@@ -185,15 +187,15 @@ class LukeSquadCell(nn.Cell):
             degree = get_group_size()
             self.grad_reducer = DistributedGradReducer(optimizer.parameters, mean, degree)
         self.is_distributed = (self.parallel_mode != ParallelMode.STAND_ALONE)
-        self.cast = P.Cast()
+        self.cast = ops.Cast()
         self.gpu_target = False
         if context.get_context("device_target") == "GPU":
             self.gpu_target = True
-            self.float_status = P.FloatStatus()
-            self.addn = P.AddN()
-            self.reshape = P.Reshape()
+            self.float_status = ops.FloatStatus()
+            self.addn = ops.AddN()
+            self.reshape = ops.Reshape()
         else:
-            self.alloc_status = P.NPUAllocFloatStatus()
+            self.alloc_status = ops.NPUAllocFloatStatus()
             self.get_status = P.NPUGetFloatStatus()
             self.clear_status = P.NPUClearFloatStatus()
         self.reduce_sum = P.ReduceSum(keep_dims=False)
@@ -232,12 +234,14 @@ class LukeSquadCell(nn.Cell):
         if sens is None:
             scaling_sens = self.loss_scale
         else:
-            scaling_sens = sens
+            scaling_sens = ops.tuple_to_array((sens,))
+
         if not self.gpu_target:
             init = self.alloc_status()
             init = F.depend(init, loss)
             clear_status = self.clear_status(init)
             scaling_sens = F.depend(scaling_sens, clear_status)
+
         grads = self.grad(self.network, weights)(word_ids,
                                                  word_segment_ids,
                                                  word_attention_mask,
@@ -246,28 +250,32 @@ class LukeSquadCell(nn.Cell):
                                                  entity_segment_ids,
                                                  entity_attention_mask,
                                                  start_positions,
-                                                 end_positions)
-        grads = self.hyper_map(F.partial(grad_scale, scaling_sens), grads)
-        grads = self.hyper_map(F.partial(clip_grad, GRADIENT_CLIP_TYPE, GRADIENT_CLIP_VALUE), grads)
-        if self.reducer_flag:
-            grads = self.grad_reducer(grads)
-        if not self.gpu_target:
-            init = F.depend(init, grads)
-            get_status = self.get_status(init)
-            init = F.depend(init, get_status)
-            flag_sum = self.reduce_sum(init, (0,))
-        else:
-            flag_sum = self.hyper_map(F.partial(_grad_overflow), grads)
-            flag_sum = self.addn(flag_sum)
-            flag_sum = self.reshape(flag_sum, (()))
-        if self.is_distributed:
-            flag_reduce = self.allreduce(flag_sum)
-            cond = self.less_equal(self.base, flag_reduce)
-        else:
-            cond = self.less_equal(self.base, flag_sum)
-        overflow = cond
-        if sens is None:
-            overflow = self.loss_scaling_manager(self.loss_scale, cond)
-        if not overflow:
-            self.optimizer(grads)
+                                                 end_positions,
+                                                 self.cast(scaling_sens,
+                                                           mstype.float32)
+                                                 )
+        # grads = self.hyper_map(F.partial(grad_scale, scaling_sens), grads)
+        # grads = self.hyper_map(F.partial(clip_grad, GRADIENT_CLIP_TYPE, GRADIENT_CLIP_VALUE), grads)
+        # if self.reducer_flag:
+        #     grads = self.grad_reducer(grads)
+        # if not self.gpu_target:
+        #     init = F.depend(init, grads)
+        #     get_status = self.get_status(init)
+        #     init = F.depend(init, get_status)
+        #     flag_sum = self.reduce_sum(init, (0,))
+        # else:
+        #     flag_sum = self.hyper_map(F.partial(_grad_overflow), grads)
+        #     flag_sum = self.addn(flag_sum)
+        #     flag_sum = self.reshape(flag_sum, (()))
+        # if self.is_distributed:
+        #     flag_reduce = self.allreduce(flag_sum)
+        #     cond = self.less_equal(self.base, flag_reduce)
+        # else:
+        #     cond = self.less_equal(self.base, flag_sum)
+        # overflow = cond
+        # if sens is None:
+        #     overflow = self.loss_scaling_manager(self.loss_scale, cond)
+        # if not overflow:
+        self.optimizer(grads)
+        cond = False
         return (loss, cond)
