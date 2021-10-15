@@ -153,7 +153,10 @@ class LukeForReadingComprehensionWithLoss(nn.Cell):
 
             start_positions = self.clamp(start_positions, 0, ignored_index)
             end_positions = self.clamp(end_positions, 0, ignored_index)
-
+            # print("start_positions:", start_positions)
+            # print("start_logits:", start_logits)
+            # print("end_positions:", end_positions)
+            # print("end_logits:", end_logits)
             start_loss = self.loss(start_logits, start_positions)
             end_loss = self.loss(end_logits, end_positions)
             total_loss = (start_loss + end_loss) / 2.0
