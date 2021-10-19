@@ -10,7 +10,10 @@ import urllib.parse
 logger = logging.getLogger(__name__)
 
 
-class SquadExample(object):
+class SquadExample:
+    """
+    SquadExample
+    """
     def __init__(self, qas_id, title, question_text, context_text, answers, is_impossible=False):
         self.qas_id = qas_id
         self.title = title.replace("_", " ")
@@ -53,7 +56,8 @@ class SquadExample(object):
         return False
 
 
-class SquadProcessor(object):
+class SquadProcessor:
+    """Squad Processor"""
     train_file = None
     dev_file = None
 

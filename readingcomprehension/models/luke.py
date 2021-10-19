@@ -83,8 +83,6 @@ class LukeForReadingComprehension(nn.Cell):
             entity_position_ids,
             entity_segment_ids,
             entity_attention_mask,
-            start_positions=None,
-            end_positions=None
     ):
         """LukeForReadingComprehension construct"""
 

@@ -17,3 +17,4 @@ __pycache__/
 model/__pycache__/
 readingcomprehension/__pycache__/
 readingcomprehension/models/__pycache__/
+*.*

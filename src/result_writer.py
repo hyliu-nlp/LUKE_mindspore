@@ -1,3 +1,18 @@
+# Copyright 2021 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""squad result writer"""
 import json
 import logging
 import math
@@ -9,7 +24,7 @@ from src.tokenization import BasicTokenizer
 logger = logging.getLogger(__name__)
 
 
-class Result(object):
+class Result:
     def __init__(self, unique_id, start_logits, end_logits):
         self.unique_id = unique_id
         self.start_logits = start_logits
@@ -17,19 +32,36 @@ class Result(object):
 
 
 def write_predictions(
-    all_examples,
-    all_features,
-    all_results,
-    n_best_size,
-    max_answer_length,
-    do_lower_case,
-    output_prediction_file,
-    output_nbest_file,
-    output_null_log_odds_file,
-    verbose_logging,
-    version_2_with_negative,
-    null_score_diff_threshold,
+        all_examples,
+        all_features,
+        all_results,
+        n_best_size,
+        max_answer_length,
+        do_lower_case,
+        output_prediction_file,
+        output_nbest_file,
+        output_null_log_odds_file,
+        version_2_with_negative,
+        null_score_diff_threshold,
 ):
+    """
+    convert logits of model's outputs to predictions
+    Args:
+        all_examples:
+        all_features:
+        all_results:
+        n_best_size:
+        max_answer_length:
+        do_lower_case:
+        output_prediction_file:
+        output_nbest_file:
+        output_null_log_odds_file:
+        version_2_with_negative:
+        null_score_diff_threshold:
+
+    Returns:
+
+    """
     logger.info("Writing predictions to: %s", output_prediction_file)
     logger.info("Writing nbest to: %s", output_nbest_file)
 
@@ -108,7 +140,6 @@ def write_predictions(
                             end_logit=result.end_logits[end_index],
                         )
                     )
-                    
         if version_2_with_negative:
             prelim_predictions.append(
                 _PrelimPrediction(
@@ -216,12 +247,22 @@ def write_predictions(
     if version_2_with_negative:
         with open(output_null_log_odds_file, "w") as writer:
             writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
-    
     print("success!")
     return all_predictions
 
 
 def get_final_text(pred_text, orig_text, do_lower_case, verbose_logging=False):
+    """
+    get_final_text
+    Args:
+        pred_text:
+        orig_text:
+        do_lower_case:
+        verbose_logging:
+
+    Returns:
+
+    """
     def _strip_spaces(text):
         ns_chars = []
         ns_to_s_map = collections.OrderedDict()
@@ -299,6 +340,14 @@ def _get_best_indexes(logits, n_best_size):
 
 
 def _compute_softmax(scores):
+    """
+
+    Args:
+        scores:
+
+    Returns:
+
+    """
     if not scores:
         return []
 

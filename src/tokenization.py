@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
 """
 Tokenization.
 """
@@ -20,6 +19,8 @@ Tokenization.
 import unicodedata
 import collections
 import json
+
+
 def convert_to_unicode(text):
     """
     Convert text into unicode type.
@@ -43,7 +44,7 @@ def vocab_to_dict_key_token(vocab_file):
     """Loads a vocab file into a dict, key is token."""
     vocab = collections.OrderedDict()
     index = 0
-    with open(vocab_file, "r", encoding = "utf8") as f:
+    with open(vocab_file, "r", encoding = "utf-8") as f:
         load_dict = json.load(f)
         for key in load_dict:
             vocab[key] = index
@@ -63,8 +64,8 @@ def vocab_to_dict_key_id(vocab_file):
 #             token = token.strip()
 #             vocab[index] = token
 #             index += 1
-            
-    with open(vocab_file, "r", encoding = "utf8") as f:
+
+    with open(vocab_file, "r", encoding = "utf-8") as f:
         load_dict = json.load(f)
         for key in load_dict:
             vocab[index] = key
@@ -120,8 +121,8 @@ def convert_ids_to_tokens(vocab_file, ids):
     """
     vocab_dict = vocab_to_dict_key_id(vocab_file)
     output = []
-    for _id in ids:
-        output.append(vocab_dict[_id])
+    for id in ids:
+        output.append(vocab_dict[id])
     return output
 
 

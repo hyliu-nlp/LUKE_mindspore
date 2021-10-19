@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
 """evaluation script for SQuAD v1.1"""
 
 from collections import Counter
 import string
 import re
 import json
-import sys
 
 def normalize_answer(s):
     """Lower text and remove punctuation, articles and extra whitespace."""
@@ -69,9 +67,8 @@ def evaluate(dataset, predictions):
             for qa in paragraph['qas']:
                 total += 1
                 if qa['id'] not in predictions:
-                    message = 'Unanswered question ' + qa['id'] + \
-                              ' will receive score 0.'
-                    print(message, file=sys.stderr)
+                    # message = 'Unanswered question ' + qa['id'] + \
+                    #           ' will receive score 0.'
                     continue
                 ground_truths = list(map(lambda x: x['text'], qa['answers']))
                 if not ground_truths:
@@ -87,7 +84,7 @@ def evaluate(dataset, predictions):
     return {'exact_match': exact_match, 'f1': f1}
 
 
-def SQuad_postprocess(dataset_file, all_predictions, output_metrics="output.json"):
+def Squad_postprocess(dataset_file, all_predictions, output_metrics="output.json"):
     with open(dataset_file) as ds:
         dataset_json = json.load(ds)
         dataset = dataset_json['data']

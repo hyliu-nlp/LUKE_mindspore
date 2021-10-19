@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
 """create squad data"""
 
 import collections
 import json
-from src import tokenization
+import tokenization
 
 
-class SquadExample():
+class SquadExample:
     """extract column contents from raw data"""
     def __init__(self,
                  qas_id,
@@ -39,7 +38,7 @@ class SquadExample():
         self.is_impossible = is_impossible
 
 
-class InputFeatures():
+class InputFeatures:
     """A single set of features of data."""
     def __init__(self,
                  unique_id,
@@ -78,7 +77,7 @@ def read_squad_examples(input_file, is_training, version_2_with_negative=False):
             return True
         return False
 
-    def token_offset(text):
+    def token_offset(paragraph_text):
         doc_tokens = []
         char_to_word_offset = []
         prev_is_whitespace = True
@@ -174,7 +173,7 @@ def _improve_answer_span(doc_tokens, input_start, input_end, tokenizer,
 
 
 def convert_examples_to_features(examples, tokenizer, max_seq_length, doc_stride,
-                                 max_query_length, is_training, output_fn, vocab_file):
+                                 max_query_length, is_training, vocab_file):
     """Loads a data file into a list of `InputBatch`s."""
     unique_id = 1000000000
     output = []
