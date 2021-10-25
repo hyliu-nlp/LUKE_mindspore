@@ -84,7 +84,7 @@ def evaluate(dataset, predictions):
     return {'exact_match': exact_match, 'f1': f1}
 
 
-def Squad_postprocess(dataset_file, all_predictions, output_metrics="output.json"):
+def squad_postprocess(dataset_file, all_predictions, output_metrics="output.json"):
     with open(dataset_file) as ds:
         dataset_json = json.load(ds)
         dataset = dataset_json['data']

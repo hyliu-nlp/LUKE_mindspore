@@ -37,7 +37,7 @@ class EntityEmbeddings(nn.Cell):
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
 
         self.layer_norm = nn.LayerNorm([config.hidden_size], epsilon=config.layer_norm_eps)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.dropout = nn.Dropout(1 - config.hidden_dropout_prob)
         self.unsqueezee = ops.ExpandDims()
 
     def construct(self, entity_ids, position_ids, token_type_ids=None):
@@ -105,7 +105,7 @@ class RobertaEmbeddings(nn.Cell):
         # any TensorFlow checkpoint file
         self.layer_norm = nn.LayerNorm([config.hidden_size],
                                        epsilon=config.layer_norm_eps)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.dropout = nn.Dropout(1 - config.hidden_dropout_prob)
         self.position_embedding_type = getattr(config, "position_embedding_type", "absolute")
 
         # End copy

@@ -55,7 +55,7 @@ class EvalOpts:
         self.verbose = verbose
 
 
-opts = None
+# opts = None
 
 
 def parse_args():
@@ -215,15 +215,15 @@ def make_eval_dict(exact_scores, f1_scores, qid_list=None):
                 ("total", total),
             ]
         )
-    else:
-        total = len(qid_list)
-        return collections.OrderedDict(
-            [
-                ("exact", 100.0 * sum(exact_scores[k] for k in qid_list) / total),
-                ("f1", 100.0 * sum(f1_scores[k] for k in qid_list) / total),
-                ("total", total),
-            ]
-        )
+
+    total = len(qid_list)
+    return collections.OrderedDict(
+        [
+            ("exact", 100.0 * sum(exact_scores[k] for k in qid_list) / total),
+            ("f1", 100.0 * sum(f1_scores[k] for k in qid_list) / total),
+            ("total", total),
+        ]
+    )
 
 
 def merge_eval(main_eval, new_eval, prefix):
