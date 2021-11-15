@@ -19,7 +19,7 @@ import math
 import collections
 from tqdm import tqdm
 
-from src.tokenization import BasicTokenizer
+from dataset.src.tokenization import BasicTokenizer
 
 logger = logging.getLogger(__name__)
 

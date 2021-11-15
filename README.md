@@ -12,10 +12,19 @@
   ├─Train_SquAD.ipynb    # 训练
   └─torch2ms.ipynb       # torch权重转换model
 ```
-### 2.Eval_SquAD.ipynb验证所需要的文件
+### 2.src/Squad.py
+get dev_data.npy
+```
+python src/Squad.py -eval True
+```
+get train_data.npy
+```
+python src/Squad.py -eval False
+```
+### 3.Eval_SquAD.ipynb验证所需要的文件
 1.验证集文件：./data/dev_data.npy
 2.权重文件：luke-large-qa.ckpt
 
-### 3.Train_SquAD.ipynb训练所需要的文件
+### 4.Train_SquAD.ipynb训练所需要的文件
 1.训练集文件：./data/train_data.npy
 2.预训练权重文件：luke-large-qa.ckpt

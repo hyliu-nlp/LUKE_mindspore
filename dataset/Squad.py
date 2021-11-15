@@ -19,12 +19,12 @@ import json
 import argparse
 import numpy as np
 
-from feature import convert_examples_to_features
-from dataset import SquadV1Processor
-from entity_vocab import EntityVocab
+from src import convert_examples_to_features
+from src.dataset import SquadV1Processor
+from src.entity_vocab import EntityVocab
 import joblib
-from wiki_link_db import WikiLinkDB
-from word_tokenizer import AutoTokenizer
+from src.wiki_link_db import WikiLinkDB
+from src.word_tokenizer import AutoTokenizer
 
 
 def _process(eval):
