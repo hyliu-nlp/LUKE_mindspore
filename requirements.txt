@@ -121,9 +121,6 @@ sentencepiece==0.1.91
 seqeval==0.0.12
 shellingham==1.4.0
 six @ file:///tmp/build/80754af9/six_1623709665295/work
-tensorboard==1.15.0
-tensorflow==1.15.3
-tensorflow-estimator==1.15.1
 termcolor==1.1.0
 terminado==0.9.4
 testpath @ file:///tmp/build/80754af9/testpath_1624638946665/work
