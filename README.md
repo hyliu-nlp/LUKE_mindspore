@@ -13,6 +13,7 @@
   └─torch2ms.ipynb       # torch权重转换model
 ```
 ### 2.src/Squad.py
+需要wiki文件：https://drive.google.com/file/d/129tDJ3ev6IdbJiKOmO6GTgNANunhO_vt/view?usp=sharing
 get dev_data.npy
 ```
 python src/Squad.py -eval True
